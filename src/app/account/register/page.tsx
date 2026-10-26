@@ -16,6 +16,7 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isExistingAccount, setIsExistingAccount] = useState(false);
 
   useEffect(() => {
     if (customer) {
@@ -30,6 +31,7 @@ export default function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setIsExistingAccount(false);
     setIsSubmitting(true);
 
     try {
@@ -43,9 +45,16 @@ export default function RegisterPage() {
     } catch (err: unknown) {
       console.error("Registration failed:", err);
       const msg = err instanceof Error ? err.message : String(err);
-      setError(
-        msg || "Failed to create account. Please try again."
-      );
+      if (
+        msg.toLowerCase().includes("already exists") ||
+        msg.toLowerCase().includes("identity")
+      ) {
+        setIsExistingAccount(true);
+        setError("You already have an account with this email.");
+      } else {
+        setIsExistingAccount(false);
+        setError(msg || "Failed to create account. Please try again.");
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -69,7 +78,21 @@ export default function RegisterPage() {
         {error && (
           <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
             <AlertCircle size={15} className="shrink-0" />
-            <span>{error}</span>
+            <div>
+              {isExistingAccount ? (
+                <span>
+                  You already have an account with this email.{" "}
+                  <Link
+                    href="/account/login"
+                    className="font-bold underline text-rose-900 hover:text-black ml-1"
+                  >
+                    Log in instead.
+                  </Link>
+                </span>
+              ) : (
+                <span>{error}</span>
+              )}
+            </div>
           </div>
         )}
 

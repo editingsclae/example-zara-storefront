@@ -12,6 +12,7 @@ import {
   createPaymentCollection,
   createPaymentSession,
   completeCart,
+  linkCartToCustomer,
   ShippingOption,
   Address,
 } from "@/lib/medusa";
@@ -145,6 +146,16 @@ export default function CheckoutPage() {
     setSubmittingOrder(true);
 
     try {
+      // If customer token exists and cart has no customer_id, link cart to customer, then refresh cart
+      if (token && cart && !cart.customer_id) {
+        try {
+          await linkCartToCustomer(cart.id, token);
+          await refreshCart();
+        } catch (linkErr) {
+          console.warn("Pre-order cart link warning:", linkErr);
+        }
+      }
+
       // 1. Create payment collection
       const paymentCollection = await createPaymentCollection(
         cart.id,

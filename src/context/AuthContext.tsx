@@ -90,7 +90,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setToken(res.token);
       localStorage.setItem(TOKEN_KEY, res.token);
       document.cookie = `${TOKEN_KEY}=${res.token}; path=/; max-age=2592000; SameSite=Lax`;
-      setCustomer(res.customer);
+      const cust = await getCustomer(res.token);
+      setCustomer(cust || res.customer);
     } finally {
       setIsLoading(false);
     }

@@ -463,6 +463,20 @@ export async function updateCart(
   return data.cart;
 }
 
+export async function linkCartToCustomer(
+  cartId: string,
+  token: string
+): Promise<Cart> {
+  const data = await medusaFetch<{ cart: Cart }>(
+    `/store/carts/${cartId}/customer`,
+    {
+      method: "POST",
+      token,
+    }
+  );
+  return data.cart;
+}
+
 // -------------------------------------------------------------
 // Checkout
 // -------------------------------------------------------------
@@ -623,12 +637,10 @@ export async function registerCustomer(params: {
     }
   );
 
-  const token = authData.token;
-
-  // 2. Create customer entity
+  // 2. Create customer entity using register token
   const custData = await medusaFetch<{ customer: Customer }>("/store/customers", {
     method: "POST",
-    token,
+    token: authData.token,
     body: JSON.stringify({
       email: params.email,
       first_name: params.first_name,
@@ -636,8 +648,11 @@ export async function registerCustomer(params: {
     }),
   });
 
+  // 3. Immediately log in with emailpass to get the customer token with actor_id
+  const loginData = await loginCustomer(params.email, params.password);
+
   return {
-    token,
+    token: loginData.token,
     customer: custData.customer,
   };
 }

@@ -14,6 +14,7 @@ import {
   addToCart as apiAddToCart,
   updateCartItem as apiUpdateCartItem,
   removeCartItem as apiRemoveCartItem,
+  linkCartToCustomer,
 } from "@/lib/medusa";
 import { useAuth } from "./AuthContext";
 
@@ -27,6 +28,7 @@ interface CartContextType {
   refreshCart: () => Promise<Cart | null>;
   clearCart: () => void;
   ensureCart: () => Promise<Cart>;
+  linkCustomerToCart: (overrideToken?: string) => Promise<Cart | null>;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -123,6 +125,22 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     init();
   }, [token]);
 
+  // Link guest cart to customer whenever token becomes available
+  useEffect(() => {
+    if (!token || !cart?.id || cart.customer_id) return;
+    let isCurrent = true;
+    linkCartToCustomer(cart.id, token)
+      .then((linked) => {
+        if (isCurrent) setCart(linked);
+      })
+      .catch((err) => {
+        console.warn("Failed to auto-link cart to customer:", err);
+      });
+    return () => {
+      isCurrent = false;
+    };
+  }, [token, cart?.id, cart?.customer_id]);
+
   const addToCart = async (
     variantId: string,
     quantity = 1
@@ -188,6 +206,25 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setCart(null);
   };
 
+  const linkCustomerToCart = useCallback(
+    async (overrideToken?: string): Promise<Cart | null> => {
+      const activeToken = overrideToken || token;
+      if (!activeToken) return cart;
+      const targetCart = cart || (await refreshCart());
+      if (targetCart && !targetCart.customer_id) {
+        try {
+          const linked = await linkCartToCustomer(targetCart.id, activeToken);
+          setCart(linked);
+          return linked;
+        } catch (err) {
+          console.warn("Failed linking cart to customer:", err);
+        }
+      }
+      return cart;
+    },
+    [token, cart, refreshCart]
+  );
+
   const itemCount =
     cart?.items?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0;
 
@@ -203,6 +240,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         refreshCart,
         clearCart,
         ensureCart,
+        linkCustomerToCart,
       }}
     >
       {children}
