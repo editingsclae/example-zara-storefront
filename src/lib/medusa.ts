@@ -276,12 +276,23 @@ export async function getCategories(): Promise<MerchantCategory[]> {
   }
 }
 
+// Helper to strip the internal sales channel prefix from category handles
+// e.g. "sc_01m58jbtwzrj8r9vj9jy2yc1cm--electronics" -> "electronics"
+export function cleanCategoryHandle(handle: string): string {
+  if (!handle) return "";
+  if (handle.includes("--")) {
+    return handle.split("--").slice(1).join("--");
+  }
+  return handle;
+}
+
 export async function getCategoryByHandle(
   handle: string
 ): Promise<MerchantCategory | null> {
+  const clean = cleanCategoryHandle(handle);
   try {
     const data = await medusaFetch<{ categories: MerchantCategory[]; count: number }>(
-      `/store/merchant/categories?handle=${encodeURIComponent(handle)}`,
+      `/store/merchant/categories?handle=${encodeURIComponent(clean)}`,
       { next: { revalidate: 60 } }
     );
     if (data.categories && data.categories.length > 0) {
@@ -289,7 +300,13 @@ export async function getCategoryByHandle(
     }
     // Fallback search in all categories in case backend query doesn't match
     const all = await getCategories();
-    return all.find((c) => c.handle.toLowerCase() === handle.toLowerCase()) || null;
+    return (
+      all.find(
+        (c) =>
+          c.handle.toLowerCase() === clean.toLowerCase() ||
+          c.handle.toLowerCase() === handle.toLowerCase()
+      ) || null
+    );
   } catch (err) {
     console.error(`Error fetching category for handle ${handle}:`, err);
     return null;

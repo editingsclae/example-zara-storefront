@@ -2,7 +2,7 @@ import React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
-import { getProductByHandle, STORE_NAME } from "@/lib/medusa";
+import { getProductByHandle, STORE_NAME, cleanCategoryHandle } from "@/lib/medusa";
 import { ProductDetailsClient } from "@/components/ProductDetailsClient";
 import { ChevronRight, Package, ShieldCheck, Truck } from "lucide-react";
 
@@ -38,7 +38,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
         {primaryCategory && (
           <>
             <Link
-              href={`/c/${primaryCategory.handle}`}
+              href={`/c/${cleanCategoryHandle(primaryCategory.handle)}`}
               className="hover:text-black transition"
             >
               {primaryCategory.name}
