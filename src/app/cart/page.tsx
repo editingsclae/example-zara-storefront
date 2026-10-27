@@ -158,12 +158,14 @@ export default function CartPage() {
               </span>
             </div>
 
-            <div className="flex justify-between text-zinc-600">
-              <span>VAT</span>
-              <span className="font-mono text-zinc-900">
-                {formatPrice(cart?.tax_total || 0, currencyCode)}
-              </span>
-            </div>
+            {cart?.tax_total !== undefined && cart.tax_total > 0 && (
+              <div className="flex justify-between text-zinc-600">
+                <span>VAT</span>
+                <span className="font-mono text-zinc-900">
+                  {formatPrice(cart.tax_total, currencyCode)}
+                </span>
+              </div>
+            )}
 
             <div className="pt-3 border-t border-zinc-200 flex justify-between text-sm font-extrabold text-zinc-900">
               <span>Total</span>

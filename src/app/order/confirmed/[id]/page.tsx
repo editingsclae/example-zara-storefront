@@ -164,12 +164,14 @@ export default async function OrderConfirmedPage({
                 {formatPrice(order.shipping_subtotal ?? 0, currencyCode)}
               </span>
             </div>
-            <div className="flex justify-between text-zinc-600">
-              <span>VAT</span>
-              <span className="font-mono">
-                {formatPrice(order.tax_total ?? 0, currencyCode)}
-              </span>
-            </div>
+            {order.tax_total !== undefined && order.tax_total > 0 && (
+              <div className="flex justify-between text-zinc-600">
+                <span>VAT</span>
+                <span className="font-mono">
+                  {formatPrice(order.tax_total, currencyCode)}
+                </span>
+              </div>
+            )}
             <div className="flex justify-between text-base font-extrabold text-zinc-900 pt-2 border-t border-zinc-200">
               <span>Total</span>
               <span className="font-mono">{formatPrice(order.total, currencyCode)}</span>
