@@ -26,6 +26,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const TOKEN_KEY = "medusa_customer_token";
+const CART_KEY = "medusa_cart_id";
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
@@ -102,6 +103,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setCustomer(null);
     localStorage.removeItem(TOKEN_KEY);
     document.cookie = `${TOKEN_KEY}=; path=/; max-age=0`;
+    localStorage.removeItem(CART_KEY);
+    document.cookie = `${CART_KEY}=; path=/; max-age=0`;
   };
 
   const refreshCustomer = async () => {

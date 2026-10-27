@@ -6,6 +6,7 @@ import React, {
   useEffect,
   useState,
   useCallback,
+  useRef,
 } from "react";
 import {
   Cart,
@@ -123,6 +124,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       }
     };
     init();
+  }, [token]);
+
+  // Clear cart in state and storage if token was cleared (logout)
+  const prevTokenRef = useRef(token);
+  useEffect(() => {
+    if (prevTokenRef.current && !token) {
+      setCartId(null);
+      setCart(null);
+    }
+    prevTokenRef.current = token;
   }, [token]);
 
   // Link guest cart to customer whenever token becomes available

@@ -17,7 +17,7 @@ export function Footer() {
           <div className="flex items-center gap-6">
             <span>Region: Tunisie (TND)</span>
             <span>&bull;</span>
-            <span>Payment: System Default</span>
+            <span>Payment: Cash on delivery</span>
             <span>&bull;</span>
             <span>&copy; {new Date().getFullYear()} {STORE_NAME}</span>
           </div>

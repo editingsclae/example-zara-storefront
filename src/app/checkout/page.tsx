@@ -19,7 +19,7 @@ import {
 import {
   CheckCircle,
   Truck,
-  CreditCard,
+  Banknote,
   AlertCircle,
   Lock,
   ArrowLeft,
@@ -52,6 +52,7 @@ export default function CheckoutPage() {
   const [shippingLoading, setShippingLoading] = useState(false);
   const [submittingOrder, setSubmittingOrder] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   // Autofill customer data if logged in
   useEffect(() => {
@@ -71,10 +72,54 @@ export default function CheckoutPage() {
   const currencyCode = cart?.currency_code || "TND";
   const items = cart?.items || [];
 
+  // Validation function
+  const validateAddress = (): boolean => {
+    const errors: Record<string, string> = {};
+
+    if (!email.trim()) {
+      errors.email = "Email address is required.";
+    }
+
+    if (!address.first_name.trim()) {
+      errors.first_name = "First name is required.";
+    }
+
+    if (!address.last_name.trim()) {
+      errors.last_name = "Last name is required.";
+    }
+
+    if (!address.address_1.trim()) {
+      errors.address_1 = "Address is required.";
+    }
+
+    // City is required
+    if (!address.city || !address.city.trim()) {
+      errors.city = "City is required.";
+    }
+
+    // Phone is required: at least 8 digits, allow +216 prefix, spaces ignored
+    const rawPhone = address.phone || "";
+    const cleanPhone = rawPhone.replace(/[\s\-()]/g, "");
+    const phonePattern = /^(\+?216)?[0-9]{8,}$/;
+    if (!rawPhone.trim()) {
+      errors.phone = "Phone number is required.";
+    } else if (!phonePattern.test(cleanPhone)) {
+      errors.phone = "Phone number must have at least 8 digits (e.g. 12 345 678 or +216 12 345 678).";
+    }
+
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   // Step 1: Save Address and Load Shipping Options
   const handleSaveAddress = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!cart) return;
+
+    if (!validateAddress()) {
+      return; // Do NOT call the API until valid
+    }
+
     setErrorMessage(null);
     setShippingLoading(true);
 
@@ -290,12 +335,27 @@ export default function CheckoutPage() {
                   </label>
                   <input
                     type="email"
-                    required
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (fieldErrors.email) {
+                        setFieldErrors((prev) => {
+                          const n = { ...prev };
+                          delete n.email;
+                          return n;
+                        });
+                      }
+                    }}
                     placeholder="shopper@example.com"
-                    className="w-full px-3 py-2 text-sm border border-zinc-300 rounded-md focus:outline-none focus:ring-1 focus:ring-zinc-900"
+                    className={`w-full px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-1 ${
+                      fieldErrors.email
+                        ? "border-rose-500 focus:ring-rose-500"
+                        : "border-zinc-300 focus:ring-zinc-900"
+                    }`}
                   />
+                  {fieldErrors.email && (
+                    <p className="text-xs text-rose-600 mt-1 font-medium">{fieldErrors.email}</p>
+                  )}
                   {!customer && (
                     <p className="text-[11px] text-zinc-500 mt-1">
                       Already have an account?{" "}
@@ -313,13 +373,26 @@ export default function CheckoutPage() {
                     </label>
                     <input
                       type="text"
-                      required
                       value={address.first_name}
-                      onChange={(e) =>
-                        setAddress({ ...address, first_name: e.target.value })
-                      }
-                      className="w-full px-3 py-2 text-sm border border-zinc-300 rounded-md focus:outline-none focus:ring-1 focus:ring-zinc-900"
+                      onChange={(e) => {
+                        setAddress({ ...address, first_name: e.target.value });
+                        if (fieldErrors.first_name) {
+                          setFieldErrors((prev) => {
+                            const n = { ...prev };
+                            delete n.first_name;
+                            return n;
+                          });
+                        }
+                      }}
+                      className={`w-full px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-1 ${
+                        fieldErrors.first_name
+                          ? "border-rose-500 focus:ring-rose-500"
+                          : "border-zinc-300 focus:ring-zinc-900"
+                      }`}
                     />
+                    {fieldErrors.first_name && (
+                      <p className="text-xs text-rose-600 mt-1 font-medium">{fieldErrors.first_name}</p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-xs font-bold uppercase tracking-wider text-zinc-700 mb-1">
@@ -327,13 +400,26 @@ export default function CheckoutPage() {
                     </label>
                     <input
                       type="text"
-                      required
                       value={address.last_name}
-                      onChange={(e) =>
-                        setAddress({ ...address, last_name: e.target.value })
-                      }
-                      className="w-full px-3 py-2 text-sm border border-zinc-300 rounded-md focus:outline-none focus:ring-1 focus:ring-zinc-900"
+                      onChange={(e) => {
+                        setAddress({ ...address, last_name: e.target.value });
+                        if (fieldErrors.last_name) {
+                          setFieldErrors((prev) => {
+                            const n = { ...prev };
+                            delete n.last_name;
+                            return n;
+                          });
+                        }
+                      }}
+                      className={`w-full px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-1 ${
+                        fieldErrors.last_name
+                          ? "border-rose-500 focus:ring-rose-500"
+                          : "border-zinc-300 focus:ring-zinc-900"
+                      }`}
                     />
+                    {fieldErrors.last_name && (
+                      <p className="text-xs text-rose-600 mt-1 font-medium">{fieldErrors.last_name}</p>
+                    )}
                   </div>
                 </div>
 
@@ -343,14 +429,27 @@ export default function CheckoutPage() {
                   </label>
                   <input
                     type="text"
-                    required
                     value={address.address_1}
-                    onChange={(e) =>
-                      setAddress({ ...address, address_1: e.target.value })
-                    }
+                    onChange={(e) => {
+                      setAddress({ ...address, address_1: e.target.value });
+                      if (fieldErrors.address_1) {
+                        setFieldErrors((prev) => {
+                          const n = { ...prev };
+                          delete n.address_1;
+                          return n;
+                        });
+                      }
+                    }}
                     placeholder="Street name, apartment, building"
-                    className="w-full px-3 py-2 text-sm border border-zinc-300 rounded-md focus:outline-none focus:ring-1 focus:ring-zinc-900"
+                    className={`w-full px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-1 ${
+                      fieldErrors.address_1
+                        ? "border-rose-500 focus:ring-rose-500"
+                        : "border-zinc-300 focus:ring-zinc-900"
+                    }`}
                   />
+                  {fieldErrors.address_1 && (
+                    <p className="text-xs text-rose-600 mt-1 font-medium">{fieldErrors.address_1}</p>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-3 gap-4">
@@ -360,21 +459,34 @@ export default function CheckoutPage() {
                     </label>
                     <input
                       type="text"
-                      required
                       value={address.city}
-                      onChange={(e) =>
-                        setAddress({ ...address, city: e.target.value })
-                      }
-                      className="w-full px-3 py-2 text-sm border border-zinc-300 rounded-md focus:outline-none focus:ring-1 focus:ring-zinc-900"
+                      onChange={(e) => {
+                        setAddress({ ...address, city: e.target.value });
+                        if (fieldErrors.city) {
+                          setFieldErrors((prev) => {
+                            const n = { ...prev };
+                            delete n.city;
+                            return n;
+                          });
+                        }
+                      }}
+                      placeholder="e.g. Tunis"
+                      className={`w-full px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-1 ${
+                        fieldErrors.city
+                          ? "border-rose-500 focus:ring-rose-500"
+                          : "border-zinc-300 focus:ring-zinc-900"
+                      }`}
                     />
+                    {fieldErrors.city && (
+                      <p className="text-xs text-rose-600 mt-1 font-medium">{fieldErrors.city}</p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-xs font-bold uppercase tracking-wider text-zinc-700 mb-1">
-                      Postal Code <span className="text-rose-500">*</span>
+                      Postal Code
                     </label>
                     <input
                       type="text"
-                      required
                       value={address.postal_code}
                       onChange={(e) =>
                         setAddress({ ...address, postal_code: e.target.value })
@@ -401,14 +513,27 @@ export default function CheckoutPage() {
                   </label>
                   <input
                     type="tel"
-                    required
                     value={address.phone}
-                    onChange={(e) =>
-                      setAddress({ ...address, phone: e.target.value })
-                    }
+                    onChange={(e) => {
+                      setAddress({ ...address, phone: e.target.value });
+                      if (fieldErrors.phone) {
+                        setFieldErrors((prev) => {
+                          const n = { ...prev };
+                          delete n.phone;
+                          return n;
+                        });
+                      }
+                    }}
                     placeholder="+216 12 345 678"
-                    className="w-full px-3 py-2 text-sm border border-zinc-300 rounded-md focus:outline-none focus:ring-1 focus:ring-zinc-900"
+                    className={`w-full px-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-1 ${
+                      fieldErrors.phone
+                        ? "border-rose-500 focus:ring-rose-500"
+                        : "border-zinc-300 focus:ring-zinc-900"
+                    }`}
                   />
+                  {fieldErrors.phone && (
+                    <p className="text-xs text-rose-600 mt-1 font-medium">{fieldErrors.phone}</p>
+                  )}
                 </div>
 
                 <button
@@ -548,13 +673,13 @@ export default function CheckoutPage() {
             {step === "payment" ? (
               <div className="p-6 space-y-6">
                 <div className="border border-zinc-200 rounded-lg p-4 bg-zinc-50 flex items-start gap-3">
-                  <CreditCard size={20} className="text-zinc-700 mt-0.5 shrink-0" />
+                  <Banknote size={20} className="text-zinc-700 mt-0.5 shrink-0" />
                   <div className="space-y-1">
                     <p className="font-bold text-sm text-zinc-900">
-                      System Default Payment (`pp_system_default`)
+                      Cash on delivery
                     </p>
                     <p className="text-xs text-zinc-600">
-                      Standard verified payment method for this merchant. Cash on Delivery / Direct Settlement.
+                      Pay when you receive your order
                     </p>
                   </div>
                 </div>
@@ -566,7 +691,7 @@ export default function CheckoutPage() {
                     disabled={submittingOrder}
                     className="w-full py-4 px-6 bg-zinc-900 text-white rounded-md font-bold text-sm uppercase tracking-wider hover:bg-black disabled:bg-zinc-300 transition shadow"
                   >
-                    {submittingOrder ? "Authorizing & Placing Order..." : "Place Order Now"}
+                    {submittingOrder ? "Placing Order..." : "Place Order Now"}
                   </button>
                 </div>
               </div>
@@ -600,29 +725,37 @@ export default function CheckoutPage() {
 
           <div className="pt-3 border-t border-zinc-200 space-y-2 text-xs">
             <div className="flex justify-between text-zinc-600">
-              <span>Subtotal</span>
+              <span>Items</span>
               <span className="font-mono font-semibold text-zinc-900">
-                {formatPrice(cart.subtotal, currencyCode)}
+                {formatPrice(
+                  cart.item_subtotal ??
+                    (cart.shipping_subtotal
+                      ? cart.subtotal - cart.shipping_subtotal
+                      : cart.subtotal),
+                  currencyCode
+                )}
               </span>
             </div>
 
-            {cart.tax_total !== undefined && cart.tax_total > 0 && (
-              <div className="flex justify-between text-zinc-600">
-                <span>Taxes (19% VAT)</span>
-                <span className="font-mono text-zinc-900">
-                  {formatPrice(cart.tax_total, currencyCode)}
-                </span>
-              </div>
-            )}
+            <div className="flex justify-between text-zinc-600">
+              <span>Shipping</span>
+              <span className="font-mono text-zinc-900">
+                {cart.shipping_subtotal !== undefined && cart.shipping_subtotal > 0 ? (
+                  formatPrice(cart.shipping_subtotal, currencyCode)
+                ) : (
+                  <span className="text-zinc-500 italic font-sans font-normal">
+                    Calculated next
+                  </span>
+                )}
+              </span>
+            </div>
 
-            {cart.shipping_total !== undefined && cart.shipping_total > 0 && (
-              <div className="flex justify-between text-zinc-600">
-                <span>Shipping</span>
-                <span className="font-mono text-zinc-900">
-                  {formatPrice(cart.shipping_total, currencyCode)}
-                </span>
-              </div>
-            )}
+            <div className="flex justify-between text-zinc-600">
+              <span>VAT</span>
+              <span className="font-mono text-zinc-900">
+                {formatPrice(cart.tax_total || 0, currencyCode)}
+              </span>
+            </div>
 
             <div className="pt-3 border-t border-zinc-200 flex justify-between text-base font-extrabold text-zinc-900">
               <span>Total</span>

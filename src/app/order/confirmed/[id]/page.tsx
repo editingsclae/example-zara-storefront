@@ -1,6 +1,12 @@
 import React from "react";
 import Link from "next/link";
-import { getOrder, formatPrice, STORE_NAME } from "@/lib/medusa";
+import {
+  getOrder,
+  formatPrice,
+  STORE_NAME,
+  getDerivedOrderStatus,
+  getDerivedPaymentStatus,
+} from "@/lib/medusa";
 import { CheckCircle2, PackageCheck, ArrowRight, ShoppingBag } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -47,8 +53,8 @@ export default async function OrderConfirmedPage({
           Your order has been received and confirmed by <strong>{STORE_NAME}</strong>. We will notify you once your package ships.
         </p>
         <div className="pt-2 inline-flex items-center gap-2 bg-white px-3 py-1.5 rounded-full border border-zinc-200 text-xs font-mono text-zinc-700">
-          <span>Order ID:</span>
-          <strong>{order.id}</strong>
+          <span>Order:</span>
+          <strong>#{order.display_id ?? order.id}</strong>
         </div>
       </div>
 
@@ -69,7 +75,7 @@ export default async function OrderConfirmedPage({
           </div>
           <div>
             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-semibold uppercase text-[10px]">
-              {order.status || "Completed"}
+              {getDerivedOrderStatus(order)}
             </span>
           </div>
         </div>
@@ -131,8 +137,9 @@ export default async function OrderConfirmedPage({
                 <p className="font-semibold text-zinc-900">
                   {order.shipping_methods?.[0]?.name || "Aramex Standard Delivery"}
                 </p>
-                <p>Status: {order.fulfillment_status || "Pending Fulfillment"}</p>
-                <p>Payment: {order.payment_status || "Authorized"}</p>
+                <p>Status: {getDerivedOrderStatus(order)}</p>
+                <p>{getDerivedPaymentStatus(order)}</p>
+                <p className="text-zinc-500 text-[11px]">Pay when you receive your order</p>
               </div>
             </div>
           </div>
@@ -140,23 +147,31 @@ export default async function OrderConfirmedPage({
           {/* Total Breakdown */}
           <div className="pt-4 border-t border-zinc-200 space-y-2 text-xs">
             <div className="flex justify-between text-zinc-600">
-              <span>Items Subtotal</span>
-              <span className="font-mono">{formatPrice(order.subtotal, currencyCode)}</span>
+              <span>Items</span>
+              <span className="font-mono">
+                {formatPrice(
+                  order.item_subtotal ??
+                    (order.shipping_subtotal
+                      ? order.subtotal - order.shipping_subtotal
+                      : order.subtotal),
+                  currencyCode
+                )}
+              </span>
             </div>
-            {order.tax_total !== undefined && order.tax_total > 0 && (
-              <div className="flex justify-between text-zinc-600">
-                <span>Taxes (19% VAT)</span>
-                <span className="font-mono">{formatPrice(order.tax_total, currencyCode)}</span>
-              </div>
-            )}
-            {order.shipping_total !== undefined && order.shipping_total > 0 && (
-              <div className="flex justify-between text-zinc-600">
-                <span>Shipping</span>
-                <span className="font-mono">{formatPrice(order.shipping_total, currencyCode)}</span>
-              </div>
-            )}
+            <div className="flex justify-between text-zinc-600">
+              <span>Shipping</span>
+              <span className="font-mono">
+                {formatPrice(order.shipping_subtotal ?? 0, currencyCode)}
+              </span>
+            </div>
+            <div className="flex justify-between text-zinc-600">
+              <span>VAT</span>
+              <span className="font-mono">
+                {formatPrice(order.tax_total ?? 0, currencyCode)}
+              </span>
+            </div>
             <div className="flex justify-between text-base font-extrabold text-zinc-900 pt-2 border-t border-zinc-200">
-              <span>Total Paid</span>
+              <span>Total</span>
               <span className="font-mono">{formatPrice(order.total, currencyCode)}</span>
             </div>
           </div>

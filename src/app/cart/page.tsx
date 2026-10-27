@@ -139,30 +139,34 @@ export default function CartPage() {
 
           <div className="space-y-2 text-xs">
             <div className="flex justify-between text-zinc-600">
-              <span>Subtotal</span>
+              <span>Items</span>
               <span className="font-semibold font-mono text-zinc-900">
-                {formatPrice(cart?.subtotal, currencyCode)}
+                {formatPrice(cart?.item_subtotal ?? cart?.subtotal, currencyCode)}
               </span>
             </div>
 
-            {cart?.tax_total !== undefined && cart.tax_total > 0 && (
-              <div className="flex justify-between text-zinc-600">
-                <span>Taxes (19% VAT)</span>
-                <span className="font-mono text-zinc-900">
-                  {formatPrice(cart.tax_total, currencyCode)}
-                </span>
-              </div>
-            )}
-
             <div className="flex justify-between text-zinc-600">
               <span>Shipping</span>
-              <span className="text-zinc-500 italic">
-                Calculated at checkout
+              <span className="font-mono text-zinc-900">
+                {cart?.shipping_subtotal !== undefined && cart.shipping_subtotal > 0
+                  ? formatPrice(cart.shipping_subtotal, currencyCode)
+                  : (
+                    <span className="text-zinc-500 italic font-sans font-normal">
+                      Calculated at checkout
+                    </span>
+                  )}
+              </span>
+            </div>
+
+            <div className="flex justify-between text-zinc-600">
+              <span>VAT</span>
+              <span className="font-mono text-zinc-900">
+                {formatPrice(cart?.tax_total || 0, currencyCode)}
               </span>
             </div>
 
             <div className="pt-3 border-t border-zinc-200 flex justify-between text-sm font-extrabold text-zinc-900">
-              <span>Estimated Total</span>
+              <span>Total</span>
               <span className="font-mono">
                 {formatPrice(cart?.total || cart?.subtotal, currencyCode)}
               </span>
@@ -180,7 +184,7 @@ export default function CartPage() {
           </div>
 
           <p className="text-[11px] text-zinc-500 text-center">
-            Standard Tunisia shipping & system default payment applied at checkout.
+            Standard Tunisia shipping & Cash on delivery applied at checkout.
           </p>
         </div>
       </div>

@@ -109,6 +109,8 @@ export interface Cart {
   region_id: string;
   total: number;
   subtotal: number;
+  item_subtotal?: number;
+  shipping_subtotal?: number;
   tax_total: number;
   shipping_total: number;
   customer_id?: string | null;
@@ -132,6 +134,8 @@ export interface Order {
   payment_status?: string;
   total: number;
   subtotal: number;
+  item_subtotal?: number;
+  shipping_subtotal?: number;
   tax_total: number;
   shipping_total: number;
   currency_code: string;
@@ -144,6 +148,25 @@ export interface Order {
     name: string;
     amount: number;
   }>;
+}
+
+export function getDerivedOrderStatus(order: { fulfillment_status?: string; status?: string }): string {
+  const fStatus = (order.fulfillment_status || "").toLowerCase();
+  if (fStatus === "delivered") {
+    return "Delivered";
+  }
+  if (fStatus === "shipped") {
+    return "Shipped";
+  }
+  return "Order placed";
+}
+
+export function getDerivedPaymentStatus(order: { payment_status?: string }): string {
+  const pStatus = (order.payment_status || "").toLowerCase();
+  if (pStatus === "captured") {
+    return "Payment: received";
+  }
+  return "Payment: pay on delivery";
 }
 
 export interface Customer {

@@ -4,13 +4,20 @@ import React, { useEffect, useState, use } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { getOrder, Order, formatPrice, STORE_NAME } from "@/lib/medusa";
+import {
+  getOrder,
+  Order,
+  formatPrice,
+  STORE_NAME,
+  getDerivedOrderStatus,
+  getDerivedPaymentStatus,
+} from "@/lib/medusa";
 import {
   ArrowLeft,
   Package,
   Calendar,
   Truck,
-  CreditCard,
+  Banknote,
   AlertCircle,
 } from "lucide-react";
 
@@ -104,10 +111,10 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-2xl font-extrabold text-zinc-900 font-mono">
-                {order.id}
+                Order #{order.display_id ?? order.id}
               </h1>
               <span className="px-2.5 py-0.5 rounded text-[10px] font-bold uppercase bg-emerald-100 text-emerald-800">
-                {order.status || "Completed"}
+                {getDerivedOrderStatus(order)}
               </span>
             </div>
             <p className="text-xs text-zinc-500 flex items-center gap-1 mt-1">
@@ -183,12 +190,12 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
 
             <div className="space-y-1">
               <h3 className="font-bold uppercase tracking-wider text-zinc-700 flex items-center gap-1.5 mb-1">
-                <CreditCard size={14} /> Payment & Fulfillment
+                <Banknote size={14} /> Payment & Fulfillment
               </h3>
               <div className="text-zinc-600 space-y-0.5">
                 <p>Merchant: <strong>{STORE_NAME}</strong></p>
-                <p>Payment: {order.payment_status || "Authorized"}</p>
-                <p>Fulfillment: {order.fulfillment_status || "Not Fulfilled"}</p>
+                <p>{getDerivedPaymentStatus(order)}</p>
+                <p>Fulfillment: {getDerivedOrderStatus(order)}</p>
                 <p>Contact: {order.email}</p>
               </div>
             </div>
@@ -197,23 +204,31 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
           {/* Totals Breakdown */}
           <div className="pt-4 border-t border-zinc-200 space-y-2 text-xs">
             <div className="flex justify-between text-zinc-600">
-              <span>Items Subtotal</span>
-              <span className="font-mono">{formatPrice(order.subtotal, currency)}</span>
+              <span>Items</span>
+              <span className="font-mono">
+                {formatPrice(
+                  order.item_subtotal ??
+                    (order.shipping_subtotal
+                      ? order.subtotal - order.shipping_subtotal
+                      : order.subtotal),
+                  currency
+                )}
+              </span>
             </div>
-            {order.tax_total !== undefined && order.tax_total > 0 && (
-              <div className="flex justify-between text-zinc-600">
-                <span>Taxes (19% VAT)</span>
-                <span className="font-mono">{formatPrice(order.tax_total, currency)}</span>
-              </div>
-            )}
-            {order.shipping_total !== undefined && order.shipping_total > 0 && (
-              <div className="flex justify-between text-zinc-600">
-                <span>Shipping</span>
-                <span className="font-mono">{formatPrice(order.shipping_total, currency)}</span>
-              </div>
-            )}
+            <div className="flex justify-between text-zinc-600">
+              <span>Shipping</span>
+              <span className="font-mono">
+                {formatPrice(order.shipping_subtotal ?? 0, currency)}
+              </span>
+            </div>
+            <div className="flex justify-between text-zinc-600">
+              <span>VAT</span>
+              <span className="font-mono">
+                {formatPrice(order.tax_total ?? 0, currency)}
+              </span>
+            </div>
             <div className="flex justify-between text-base font-extrabold text-zinc-900 pt-2 border-t border-zinc-200">
-              <span>Total Paid</span>
+              <span>Total</span>
               <span className="font-mono">{formatPrice(order.total, currency)}</span>
             </div>
           </div>

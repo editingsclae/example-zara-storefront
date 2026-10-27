@@ -4,7 +4,14 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { getCustomerOrders, Order, formatPrice, STORE_NAME } from "@/lib/medusa";
+import { useCart } from "@/context/CartContext";
+import {
+  getCustomerOrders,
+  Order,
+  formatPrice,
+  STORE_NAME,
+  getDerivedOrderStatus,
+} from "@/lib/medusa";
 import {
   Package,
   LogOut,
@@ -16,6 +23,7 @@ import {
 export default function AccountPage() {
   const router = useRouter();
   const { customer, token, logout, isLoading: authLoading } = useAuth();
+  const { clearCart } = useCart();
   const [orders, setOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(true);
 
@@ -57,6 +65,11 @@ export default function AccountPage() {
     return null;
   }
 
+  const handleLogout = () => {
+    clearCart();
+    logout();
+  };
+
   return (
     <div className="max-w-4xl mx-auto space-y-8">
       {/* Account Overview Header */}
@@ -78,7 +91,7 @@ export default function AccountPage() {
         </div>
 
         <button
-          onClick={logout}
+          onClick={handleLogout}
           className="inline-flex items-center gap-2 px-4 py-2 border border-zinc-300 rounded-md text-xs font-semibold text-zinc-700 bg-white hover:bg-zinc-100 hover:text-rose-600 transition self-start sm:self-auto"
         >
           <LogOut size={14} />
@@ -138,10 +151,10 @@ export default function AccountPage() {
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <span className="font-mono font-bold text-sm text-zinc-900">
-                        {order.id}
+                        Order #{order.display_id ?? order.id}
                       </span>
                       <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 uppercase">
-                        {order.status || "Completed"}
+                        {getDerivedOrderStatus(order)}
                       </span>
                     </div>
 
