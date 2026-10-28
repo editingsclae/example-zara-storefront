@@ -612,6 +612,23 @@ export async function getOrder(
   }
 }
 
+// Moves the guest orders named in orderIds to the logged-in customer. The backend
+// only moves orders of this merchant that were placed as a guest with the same
+// email; everything else is skipped quietly.
+export async function claimGuestOrders(
+  token: string,
+  orderIds: string[]
+): Promise<{ claimed: string[]; already_yours: string[] }> {
+  return medusaFetch<{ claimed: string[]; already_yours: string[] }>(
+    "/store/merchant/claim-orders",
+    {
+      method: "POST",
+      token,
+      body: JSON.stringify({ order_ids: orderIds }),
+    }
+  );
+}
+
 export async function getCustomerOrders(token: string): Promise<Order[]> {
   try {
     const data = await medusaFetch<{ orders: Order[] }>("/store/orders", {

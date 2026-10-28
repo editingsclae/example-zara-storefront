@@ -3,10 +3,12 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import {
   Customer,
+  claimGuestOrders,
   getCustomer,
   loginCustomer,
   registerCustomer,
 } from "@/lib/medusa";
+import { forgetGuestOrders, getGuestOrderIds } from "@/lib/guest-orders";
 
 interface AuthContextType {
   customer: Customer | null;
@@ -24,6 +26,21 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+// Moves the guest orders placed in this browser to the account that just logged
+// in. Failure is ignored: the shopper can still log in and shop.
+async function claimRememberedOrders(token: string) {
+  const ids = getGuestOrderIds();
+  if (ids.length === 0) return;
+  try {
+    await claimGuestOrders(token, ids);
+    // Orders that were skipped (different email) can never be claimed from this
+    // account, so there is no reason to keep sending them.
+    forgetGuestOrders(ids);
+  } catch {
+    // Keep the ids and try again at the next login
+  }
+}
 
 const TOKEN_KEY = "medusa_customer_token";
 const CART_KEY = "medusa_cart_id";
@@ -72,6 +89,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setToken(res.token);
       localStorage.setItem(TOKEN_KEY, res.token);
       document.cookie = `${TOKEN_KEY}=${res.token}; path=/; max-age=2592000; SameSite=Lax`;
+      await claimRememberedOrders(res.token);
       const cust = await getCustomer(res.token);
       setCustomer(cust);
     } finally {
@@ -91,6 +109,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setToken(res.token);
       localStorage.setItem(TOKEN_KEY, res.token);
       document.cookie = `${TOKEN_KEY}=${res.token}; path=/; max-age=2592000; SameSite=Lax`;
+      await claimRememberedOrders(res.token);
       const cust = await getCustomer(res.token);
       setCustomer(cust || res.customer);
     } finally {

@@ -25,6 +25,7 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import Link from "next/link";
+import { rememberGuestOrder } from "@/lib/guest-orders";
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -219,6 +220,10 @@ export default function CheckoutPage() {
 
       if (result.type === "order" && result.order) {
         const orderId = result.order.id;
+        // A guest can claim this order later, when they log in or register
+        if (!token) {
+          rememberGuestOrder(orderId);
+        }
         clearCart();
         startTransition(() => {
           router.push(`/order/confirmed/${orderId}`);
