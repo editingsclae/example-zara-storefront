@@ -63,6 +63,7 @@ export interface Product {
     title: string;
     values: Array<{ id: string; value: string }>;
   }>;
+  created_at?: string;
 }
 
 export interface LineItem {
@@ -343,6 +344,7 @@ export async function getProducts(params?: {
   category_id?: string;
   limit?: number;
   offset?: number;
+  order?: string;
 }): Promise<Product[]> {
   const region = await getDefaultRegion();
   const searchParams = new URLSearchParams();
@@ -353,6 +355,7 @@ export async function getProducts(params?: {
   );
   if (params?.limit) searchParams.set("limit", params.limit.toString());
   if (params?.offset) searchParams.set("offset", params.offset.toString());
+  if (params?.order) searchParams.set("order", params.order);
   if (params?.category_id) {
     searchParams.append("category_id[]", params.category_id);
   }
@@ -362,6 +365,63 @@ export async function getProducts(params?: {
     { cache: "no-store" }
   );
   return data.products || [];
+}
+
+export async function getAllProducts(params?: {
+  category_id?: string | string[];
+  order?: string;
+}): Promise<Product[]> {
+  const region = await getDefaultRegion();
+  const allProducts: Product[] = [];
+  const limit = 100;
+  let offset = 0;
+  const maxProducts = 500;
+
+  while (offset < maxProducts) {
+    const searchParams = new URLSearchParams();
+    searchParams.set("region_id", region.id);
+    searchParams.set(
+      "fields",
+      "*variants.calculated_price,+variants.inventory_quantity,*categories,+metadata,*options,*options.values,*variants.options,+created_at"
+    );
+    searchParams.set("limit", limit.toString());
+    searchParams.set("offset", offset.toString());
+
+    if (params?.category_id) {
+      if (Array.isArray(params.category_id)) {
+        params.category_id.forEach((catId) =>
+          searchParams.append("category_id[]", catId)
+        );
+      } else {
+        searchParams.append("category_id[]", params.category_id);
+      }
+    }
+    if (params?.order) {
+      searchParams.set("order", params.order);
+    }
+
+    const data = await medusaFetch<{ products: Product[]; count?: number }>(
+      `/store/products?${searchParams.toString()}`,
+      { cache: "no-store" }
+    );
+
+    const products = data.products || [];
+    allProducts.push(...products);
+
+    const totalCount =
+      typeof data.count === "number" ? data.count : products.length;
+    offset += products.length;
+
+    if (
+      products.length < limit ||
+      offset >= totalCount ||
+      allProducts.length >= maxProducts
+    ) {
+      break;
+    }
+  }
+
+  return allProducts.slice(0, maxProducts);
 }
 
 export async function getProductByHandle(

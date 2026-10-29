@@ -1,14 +1,35 @@
-import React from "react";
+import React, { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getCategoryByHandle, getProducts, STORE_NAME, Product } from "@/lib/medusa";
-import { ProductCard } from "@/components/ProductCard";
-import { ChevronRight, PackageX } from "lucide-react";
+import {
+  getCategoryByHandle,
+  getAllProducts,
+  getCategories,
+  STORE_NAME,
+} from "@/lib/medusa";
+import { ShopClient } from "@/components/ShopClient";
+import { ChevronRight } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
 interface CategoryPageProps {
   params: Promise<{ handle: string }>;
+}
+
+export async function generateMetadata({ params }: CategoryPageProps) {
+  const { handle } = await params;
+  const category = await getCategoryByHandle(handle);
+  if (!category) {
+    return {
+      title: STORE_NAME,
+    };
+  }
+  return {
+    title: `${category.name} | ${STORE_NAME}`,
+    description:
+      category.description ||
+      `Shop ${category.name} at ${STORE_NAME}. Cash on delivery.`,
+  };
 }
 
 export default async function CategoryPage({ params }: CategoryPageProps) {
@@ -19,15 +40,11 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
     notFound();
   }
 
-  // Fetch products filtered by the category's ID
-  let products: Product[] = [];
-  let error: string | null = null;
-  try {
-    products = await getProducts({ category_id: category.id });
-  } catch (err: unknown) {
-    console.error(`Error loading products for category ${category.name}:`, err);
-    error = err instanceof Error ? err.message : "Failed to load products for this category.";
-  }
+  // Fetch all products for this category using getAllProducts (no 50-limit truncation)
+  const [products, categories] = await Promise.all([
+    getAllProducts({ category_id: category.id }),
+    getCategories(),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -35,6 +52,10 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
       <nav className="flex items-center gap-2 text-xs text-zinc-500">
         <Link href="/" className="hover:text-black transition">
           {STORE_NAME}
+        </Link>
+        <ChevronRight size={14} />
+        <Link href="/shop" className="hover:text-black transition">
+          Shop
         </Link>
         <ChevronRight size={14} />
         <span className="text-zinc-900 font-medium">{category.name}</span>
@@ -46,9 +67,6 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-zinc-900">
             {category.name}
           </h1>
-          <span className="text-xs font-mono text-zinc-500">
-            {products.length} {products.length === 1 ? "product" : "products"}
-          </span>
         </div>
         {category.description && (
           <p className="text-sm text-zinc-600 mt-1 max-w-2xl">
@@ -57,43 +75,20 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
         )}
       </div>
 
-      {/* Error state */}
-      {error && (
-        <div className="p-4 rounded-lg bg-rose-50 border border-rose-200 text-rose-800 text-sm">
-          <p className="font-semibold">Unable to fetch products</p>
-          <p className="text-xs text-rose-600 mt-0.5">{error}</p>
-        </div>
-      )}
-
-      {/* Empty State */}
-      {!error && products.length === 0 && (
-        <div className="text-center py-16 border border-dashed border-zinc-200 rounded-xl space-y-3">
-          <PackageX size={44} className="mx-auto text-zinc-400" />
-          <h3 className="text-base font-semibold text-zinc-800">
-            No products found in {category.name}
-          </h3>
-          <p className="text-xs text-zinc-500 max-w-sm mx-auto">
-            This merchant currently has no products listed under this category.
-          </p>
-          <div className="pt-2">
-            <Link
-              href="/"
-              className="inline-block text-xs font-semibold px-4 py-2 rounded-md bg-zinc-900 text-white hover:bg-zinc-800 transition"
-            >
-              Back to All Products
-            </Link>
+      {/* Client Shop Component with Category Fixed */}
+      <Suspense
+        fallback={
+          <div className="py-20 text-center text-xs font-mono text-zinc-500">
+            Loading products...
           </div>
-        </div>
-      )}
-
-      {/* Products Grid */}
-      {!error && products.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {products.map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))}
-        </div>
-      )}
+        }
+      >
+        <ShopClient
+          products={products}
+          categories={categories}
+          fixedCategory={category}
+        />
+      </Suspense>
     </div>
   );
 }
