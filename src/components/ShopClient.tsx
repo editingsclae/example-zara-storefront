@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { useSearchParams, useRouter, usePathname } from "next/navigation";
+import { useSearchParams, usePathname } from "next/navigation";
 import {
   Product,
   MerchantCategory,
@@ -56,7 +56,6 @@ export function ShopClient({
   categories,
   fixedCategory,
 }: ShopClientProps) {
-  const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
@@ -109,9 +108,12 @@ export function ShopClient({
         }
       }
       const qs = current.toString();
-      router.replace(`${pathname}${qs ? `?${qs}` : ""}`, { scroll: false });
+      // history.replaceState keeps useSearchParams in sync (Next.js 14.1+) but
+      // does not re-render the server page. router.replace would refetch the
+      // whole catalog from the backend on every keystroke or click.
+      window.history.replaceState(null, "", `${pathname}${qs ? `?${qs}` : ""}`);
     },
-    [searchParams, pathname, router]
+    [searchParams, pathname]
   );
 
   // Debounced search input handler (250ms)
@@ -428,7 +430,7 @@ export function ShopClient({
   );
 
   const handleClearAllFilters = () => {
-    router.replace(pathname, { scroll: false });
+    window.history.replaceState(null, "", pathname);
   };
 
   // Lock scroll on mobile bottom sheet open & escape key

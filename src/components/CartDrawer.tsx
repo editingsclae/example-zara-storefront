@@ -13,6 +13,7 @@ export function CartDrawer() {
   const pathname = usePathname();
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
   const previouslyFocusedElementRef = useRef<HTMLElement | null>(null);
+  const wasOpenRef = useRef(false);
 
   const [busyLineId, setBusyLineId] = useState<string | null>(null);
   const [lineErrors, setLineErrors] = useState<Record<string, string>>({});
@@ -25,6 +26,7 @@ export function CartDrawer() {
   // Handle open/close side-effects: body scroll lock and focus management
   useEffect(() => {
     if (isCartOpen) {
+      wasOpenRef.current = true;
       previouslyFocusedElementRef.current = document.activeElement as HTMLElement | null;
       const originalOverflow = document.body.style.overflow;
       document.body.style.overflow = "hidden";
@@ -38,8 +40,11 @@ export function CartDrawer() {
         clearTimeout(timer);
         document.body.style.overflow = originalOverflow;
       };
-    } else {
-      // Return focus to header cart button or previous element
+    } else if (wasOpenRef.current) {
+      // Only after the drawer was open: return focus to the header cart button
+      // or the previous element. Doing it on the first render would pull focus
+      // to the cart button on every page load.
+      wasOpenRef.current = false;
       const cartBtn = document.getElementById("header-cart-button");
       if (cartBtn) {
         cartBtn.focus();
