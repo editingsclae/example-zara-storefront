@@ -8,8 +8,8 @@ import { ClientProviders } from "@/components/ClientProviders";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: `${STORE_NAME} Storefront`,
-  description: `Official test storefront for ${STORE_NAME} on Medusa v2`,
+  title: `${STORE_NAME}`,
+  description: `Shop online at ${STORE_NAME}. Fast delivery across Tunisia. Pay on delivery.`,
 };
 
 export default async function RootLayout({
