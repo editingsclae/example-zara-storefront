@@ -3,8 +3,7 @@
 import React, { useState } from "react";
 import { Product, ProductVariant, formatPrice } from "@/lib/medusa";
 import { useCart } from "@/context/CartContext";
-import { Check, ShoppingBag, AlertCircle } from "lucide-react";
-import Link from "next/link";
+import { ShoppingBag, AlertCircle } from "lucide-react";
 
 interface ProductDetailsClientProps {
   product: Product;
@@ -19,7 +18,6 @@ export function ProductDetailsClient({ product }: ProductDetailsClientProps) {
   );
   const [quantity, setQuantity] = useState<number>(1);
   const [isAdding, setIsAdding] = useState(false);
-  const [addedSuccess, setAddedSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const selectedVariant =
@@ -33,12 +31,9 @@ export function ProductDetailsClient({ product }: ProductDetailsClientProps) {
     if (!selectedVariant) return;
     setIsAdding(true);
     setErrorMessage(null);
-    setAddedSuccess(false);
 
     try {
       await addToCart(selectedVariant.id, quantity);
-      setAddedSuccess(true);
-      setTimeout(() => setAddedSuccess(false), 4000);
     } catch (err: unknown) {
       console.error("Failed to add to cart:", err);
       const msg = err instanceof Error ? err.message : String(err);
@@ -175,20 +170,6 @@ export function ProductDetailsClient({ product }: ProductDetailsClientProps) {
         </div>
 
         {/* Feedback Messages */}
-        {addedSuccess && (
-          <div className="flex items-center justify-between p-3 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs">
-            <span className="flex items-center gap-1.5 font-medium">
-              <Check size={16} /> Added {quantity} item(s) to your cart!
-            </span>
-            <Link
-              href="/cart"
-              className="font-bold underline hover:text-emerald-950 transition ml-2"
-            >
-              View Cart &rarr;
-            </Link>
-          </div>
-        )}
-
         {errorMessage && (
           <div className="p-3 rounded-md bg-rose-50 border border-rose-200 text-rose-700 text-xs">
             {errorMessage}

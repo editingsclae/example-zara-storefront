@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { MerchantCategory, STORE_NAME } from "@/lib/medusa";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
@@ -12,9 +13,12 @@ interface HeaderProps {
 }
 
 export function Header({ categories }: HeaderProps) {
-  const { itemCount } = useCart();
+  const { itemCount, openCart } = useCart();
   const { customer } = useAuth();
+  const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const isCartOrCheckout = pathname === "/cart" || pathname === "/checkout";
 
   return (
     <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-zinc-200">
@@ -79,19 +83,39 @@ export function Header({ categories }: HeaderProps) {
               </span>
             </Link>
 
-            <Link
-              href="/cart"
-              className="relative flex items-center gap-2 p-2 text-zinc-700 hover:text-black hover:bg-zinc-100 rounded-md transition text-sm"
-              title="View Cart"
-            >
-              <ShoppingBag size={19} />
-              <span className="hidden sm:inline font-medium">Cart</span>
-              {itemCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-zinc-900 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
-                  {itemCount}
-                </span>
-              )}
-            </Link>
+            {isCartOrCheckout ? (
+              <Link
+                href="/cart"
+                id="header-cart-button"
+                className="relative flex items-center gap-2 p-2 text-zinc-700 hover:text-black hover:bg-zinc-100 rounded-md transition text-sm"
+                title="View Cart"
+              >
+                <ShoppingBag size={19} />
+                <span className="hidden sm:inline font-medium">Cart</span>
+                {itemCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-zinc-900 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
+                    {itemCount}
+                  </span>
+                )}
+              </Link>
+            ) : (
+              <button
+                type="button"
+                id="header-cart-button"
+                onClick={openCart}
+                className="relative flex items-center gap-2 p-2 text-zinc-700 hover:text-black hover:bg-zinc-100 rounded-md transition text-sm cursor-pointer"
+                title="Open Cart"
+                aria-label={`Open Cart with ${itemCount} items`}
+              >
+                <ShoppingBag size={19} />
+                <span className="hidden sm:inline font-medium">Cart</span>
+                {itemCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-zinc-900 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
+                    {itemCount}
+                  </span>
+                )}
+              </button>
+            )}
           </div>
         </div>
       </div>

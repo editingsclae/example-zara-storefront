@@ -23,6 +23,9 @@ interface CartContextType {
   cart: Cart | null;
   isLoading: boolean;
   itemCount: number;
+  isCartOpen: boolean;
+  openCart: () => void;
+  closeCart: () => void;
   addToCart: (variantId: string, quantity?: number) => Promise<Cart>;
   updateQuantity: (lineItemId: string, quantity: number) => Promise<Cart>;
   removeItem: (lineItemId: string) => Promise<Cart>;
@@ -39,7 +42,11 @@ const CART_KEY = "medusa_cart_id";
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [cart, setCart] = useState<Cart | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isCartOpen, setIsCartOpen] = useState(false);
   const { token } = useAuth();
+
+  const openCart = useCallback(() => setIsCartOpen(true), []);
+  const closeCart = useCallback(() => setIsCartOpen(false), []);
 
   const setCartId = (id: string | null) => {
     if (id) {
@@ -167,6 +174,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       );
       setCart(updated);
       setCartId(updated.id);
+      setIsCartOpen(true);
       return updated;
     } finally {
       setIsLoading(false);
@@ -245,6 +253,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         cart,
         isLoading,
         itemCount,
+        isCartOpen,
+        openCart,
+        closeCart,
         addToCart,
         updateQuantity,
         removeItem,
