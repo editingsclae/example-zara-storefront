@@ -4,16 +4,22 @@ import {
   STORE_NAME,
   getProducts,
   getCategories,
+  getStorefrontContent,
   cleanCategoryHandle,
   Product,
   MerchantCategory,
 } from "@/lib/medusa";
 import { ProductCard } from "@/components/ProductCard";
+import { HeroSlider } from "@/components/HeroSlider";
+import { PromoBanners } from "@/components/PromoBanners";
 import { ArrowRight, Sparkles, LayoutGrid, PackageX } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
+  // Banners set by the merchant in the portal. This never throws.
+  const contentPromise = getStorefrontContent();
+
   let newArrivals: Product[] = [];
   let categories: MerchantCategory[] = [];
   let error: string | null = null;
@@ -31,9 +37,18 @@ export default async function HomePage() {
       err instanceof Error ? err.message : "Failed to load products from store.";
   }
 
+  const content = await contentPromise;
+  const hasHeroSlides = content.hero_slides.length > 0;
+
   return (
     <div className="space-y-12 pb-10">
-      {/* Store Hero Banner */}
+      {/* Hero: the merchant's slides, or a simple welcome banner until there are some */}
+      {hasHeroSlides ? (
+        <>
+          <h1 className="sr-only">{STORE_NAME}</h1>
+          <HeroSlider slides={content.hero_slides} />
+        </>
+      ) : (
       <div className="border border-zinc-200 rounded-2xl p-8 sm:p-12 bg-gradient-to-br from-zinc-50 via-zinc-100/50 to-zinc-50 flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
         <div className="space-y-3 max-w-xl">
           <div className="inline-flex items-center gap-1.5 text-[11px] font-semibold tracking-wider uppercase px-2.5 py-0.5 rounded-full bg-zinc-900 text-white">
@@ -78,6 +93,8 @@ export default async function HomePage() {
           </div>
         )}
       </div>
+
+      )}
 
       {/* Category Tiles Section */}
       {categories.length > 0 && (
@@ -179,6 +196,9 @@ export default async function HomePage() {
           </Link>
         </div>
       </section>
+
+      {/* Promo banners set by the merchant */}
+      <PromoBanners banners={content.promo_banners} />
     </div>
   );
 }

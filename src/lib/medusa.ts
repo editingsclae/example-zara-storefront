@@ -445,6 +445,60 @@ export async function getProductByHandle(
 }
 
 // -------------------------------------------------------------
+// Storefront banners: hero slides and promo banners
+// Set by the merchant in the portal (Settings > Appearance). Never hardcode them.
+// -------------------------------------------------------------
+export type BannerLinkType = "none" | "shop" | "category" | "product";
+
+export interface Banner {
+  id: string;
+  image_url: string;
+  // Small text above the title: a badge or a collection name
+  label: string;
+  title: string;
+  text: string;
+  button_label: string;
+  link: { type: BannerLinkType; handle?: string };
+}
+
+export interface StorefrontContent {
+  hero_slides: Banner[];
+  promo_banners: Banner[];
+}
+
+// The banners are decoration: if they cannot be loaded the page still works
+// and shows its defaults.
+export async function getStorefrontContent(): Promise<StorefrontContent> {
+  try {
+    const data = await medusaFetch<Partial<StorefrontContent>>(
+      "/store/merchant/storefront",
+      { next: { revalidate: 60 } }
+    );
+    return {
+      hero_slides: Array.isArray(data.hero_slides) ? data.hero_slides : [],
+      promo_banners: Array.isArray(data.promo_banners) ? data.promo_banners : [],
+    };
+  } catch (err) {
+    console.error("Error fetching storefront banners:", err);
+    return { hero_slides: [], promo_banners: [] };
+  }
+}
+
+// Where a banner goes. A banner never links outside the store.
+export function bannerHref(link: Banner["link"]): string | null {
+  switch (link?.type) {
+    case "shop":
+      return "/shop";
+    case "category":
+      return link.handle ? `/c/${cleanCategoryHandle(link.handle)}` : null;
+    case "product":
+      return link.handle ? `/p/${encodeURIComponent(link.handle)}` : null;
+    default:
+      return null;
+  }
+}
+
+// -------------------------------------------------------------
 // Cart Management
 // -------------------------------------------------------------
 export async function getCart(
