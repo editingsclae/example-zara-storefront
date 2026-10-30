@@ -1,12 +1,24 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { MerchantCategory, STORE_NAME } from "@/lib/medusa";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
-import { ShoppingBag, User, Menu, X, ChevronRight, Search } from "lucide-react";
+import {
+  ShoppingBag,
+  User,
+  Menu,
+  X,
+  ChevronRight,
+  ChevronDown,
+  Search,
+} from "lucide-react";
+
+// How many categories sit in the top bar. The rest are only in the
+// "All Categories" dropdown, which lists every category.
+const TOP_BAR_CATEGORIES = 5;
 
 interface HeaderProps {
   categories: MerchantCategory[];
@@ -22,7 +34,36 @@ export function Header({ categories }: HeaderProps) {
   const [desktopSearch, setDesktopSearch] = useState("");
   const [mobileSearch, setMobileSearch] = useState("");
 
+  const [categoriesOpen, setCategoriesOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
+
   const isCartOrCheckout = pathname === "/cart" || pathname === "/checkout";
+  const topCategories = categories.slice(0, TOP_BAR_CATEGORIES);
+
+  // Close the categories dropdown on an outside click or Esc. Choosing a link
+  // closes it through the link's own onClick.
+  useEffect(() => {
+    if (!categoriesOpen) return;
+    const handlePointerDown = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setCategoriesOpen(false);
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setCategoriesOpen(false);
+    };
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [categoriesOpen]);
+
+  const navLinkClass = (active: boolean) =>
+    `text-sm whitespace-nowrap transition hover:text-black ${
+      active ? "font-semibold text-zinc-900" : "font-medium text-zinc-600"
+    }`;
 
   const handleDesktopSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,8 +91,9 @@ export function Header({ categories }: HeaderProps) {
   return (
     <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-zinc-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Row 1: store name, search, account and cart */}
         <div className="flex items-center justify-between h-16 gap-3 sm:gap-6">
-          {/* Left: Mobile Menu Toggle & Store Logo */}
+          {/* Left: Mobile Menu Toggle & Store Name */}
           <div className="flex items-center gap-3 sm:gap-4 flex-shrink-0">
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -69,48 +111,27 @@ export function Header({ categories }: HeaderProps) {
             </Link>
           </div>
 
-          {/* Center: Navigation (Desktop) with Shop link first */}
-          <nav className="hidden md:flex items-center gap-5 flex-shrink-0">
-            <Link
-              href="/shop"
-              className="text-sm font-semibold text-zinc-900 hover:text-black transition"
-            >
-              Shop
-            </Link>
-            {categories.length > 0 ? (
-              categories.map((cat) => (
-                <Link
-                  key={cat.id}
-                  href={`/c/${cat.handle}`}
-                  className="text-sm font-medium text-zinc-600 hover:text-black transition flex items-center gap-1.5"
-                >
-                  <span>{cat.name}</span>
-                  {cat.product_count > 0 && (
-                    <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-zinc-100 text-zinc-500 font-mono">
-                      {cat.product_count}
-                    </span>
-                  )}
-                </Link>
-              ))
-            ) : null}
-          </nav>
-
-          {/* Desktop Search Box */}
+          {/* Center: Desktop Search Bar */}
           <form
             onSubmit={handleDesktopSearch}
-            className="hidden md:flex items-center relative w-40 lg:w-56 flex-shrink"
+            role="search"
+            className="hidden md:flex flex-1 max-w-2xl mx-auto items-stretch"
           >
             <input
               type="text"
               value={desktopSearch}
               onChange={(e) => setDesktopSearch(e.target.value)}
-              placeholder="Search..."
-              className="w-full text-xs bg-zinc-50 border border-zinc-200 rounded-lg pl-8 pr-3 py-1.5 text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white transition"
+              placeholder="Search for products..."
+              aria-label="Search products"
+              className="w-full min-w-0 text-sm bg-zinc-50 border border-zinc-200 border-r-0 rounded-l-lg px-4 py-2.5 text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 focus:bg-white transition"
             />
-            <Search
-              size={13}
-              className="absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none"
-            />
+            <button
+              type="submit"
+              aria-label="Search"
+              className="px-4 bg-zinc-900 hover:bg-black text-white rounded-r-lg transition flex items-center justify-center"
+            >
+              <Search size={16} />
+            </button>
           </form>
 
           {/* Right: Customer & Cart Actions */}
@@ -161,6 +182,69 @@ export function Header({ categories }: HeaderProps) {
             )}
           </div>
         </div>
+
+        {/* Row 2 (desktop): All Categories dropdown, Home, Shop and the first categories */}
+        <nav
+          aria-label="Main"
+          className="hidden md:flex items-center gap-5 h-11 border-t border-zinc-100"
+        >
+          {categories.length > 0 && (
+            <div ref={dropdownRef} className="relative flex-shrink-0">
+              <button
+                type="button"
+                onClick={() => setCategoriesOpen((open) => !open)}
+                aria-expanded={categoriesOpen}
+                aria-haspopup="true"
+                className="flex items-center gap-2 px-3.5 py-1.5 bg-zinc-900 hover:bg-black text-white text-sm font-semibold rounded-md transition cursor-pointer"
+              >
+                <Menu size={16} />
+                <span>All Categories</span>
+                <ChevronDown
+                  size={14}
+                  className={`transition-transform ${categoriesOpen ? "rotate-180" : ""}`}
+                />
+              </button>
+
+              {categoriesOpen && (
+                <div className="absolute left-0 top-full mt-2 w-72 max-h-[70vh] overflow-y-auto bg-white border border-zinc-200 rounded-lg shadow-lg p-2 z-50">
+                  {categories.map((cat) => (
+                    <Link
+                      key={cat.id}
+                      href={`/c/${cat.handle}`}
+                      onClick={() => setCategoriesOpen(false)}
+                      className="flex items-center justify-between gap-3 px-3 py-2.5 text-sm font-medium text-zinc-700 hover:text-black hover:bg-zinc-100 rounded-md transition"
+                    >
+                      <span className="truncate">{cat.name}</span>
+                      <ChevronRight size={15} className="text-zinc-400 flex-shrink-0" />
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          <Link href="/" className={navLinkClass(pathname === "/")}>
+            Home
+          </Link>
+          <Link href="/shop" className={navLinkClass(pathname === "/shop")}>
+            Shop
+          </Link>
+
+          {/* Category links need room: the first 3 show from the lg breakpoint,
+              all 5 from xl. Every category is also in the dropdown. */}
+          {topCategories.map((cat, index) => (
+            <Link
+              key={cat.id}
+              href={`/c/${cat.handle}`}
+              title={cat.name}
+              className={`${index < 3 ? "hidden lg:block" : "hidden xl:block"} max-w-[10rem] truncate ${navLinkClass(
+                pathname === `/c/${cat.handle}`
+              )}`}
+            >
+              {cat.name}
+            </Link>
+          ))}
+        </nav>
       </div>
 
       {/* Mobile Drawer Menu */}
@@ -181,7 +265,16 @@ export function Header({ categories }: HeaderProps) {
             />
           </form>
 
-          {/* Shop Link First */}
+          <Link
+            href="/"
+            onClick={() => setMobileMenuOpen(false)}
+            className="flex items-center justify-between py-2 text-sm font-semibold text-zinc-900 hover:text-black border-b border-zinc-100"
+          >
+            <span>Home</span>
+            <ChevronRight size={16} className="text-zinc-400" />
+          </Link>
+
+          {/* Shop Link */}
           <Link
             href="/shop"
             onClick={() => setMobileMenuOpen(false)}
