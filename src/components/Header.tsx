@@ -237,7 +237,7 @@ export function Header({ categories }: HeaderProps) {
               key={cat.id}
               href={`/c/${cat.handle}`}
               title={cat.name}
-              className={`${index < 3 ? "hidden lg:block" : "hidden xl:block"} max-w-[10rem] truncate ${navLinkClass(
+              className={`${index < 3 ? "hidden lg:block" : "hidden xl:block"} max-w-[14rem] truncate ${navLinkClass(
                 pathname === `/c/${cat.handle}`
               )}`}
             >
