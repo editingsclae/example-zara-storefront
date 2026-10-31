@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useSearchParams, usePathname } from "next/navigation";
 import {
   Product,
@@ -9,6 +9,13 @@ import {
   formatPrice,
 } from "@/lib/medusa";
 import { ProductCard } from "@/components/ProductCard";
+import { Pagination } from "@/components/Pagination";
+import {
+  PRODUCTS_PER_PAGE,
+  pageCount,
+  pageSlice,
+  parsePage,
+} from "@/lib/pagination";
 import {
   SlidersHorizontal,
   X,
@@ -62,14 +69,8 @@ export function ShopClient({
   // Mobile sheet open state
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
 
-  // Pagination state: 24 per page
-  const searchParamsString = searchParams.toString();
-  const [prevParamsString, setPrevParamsString] = useState(searchParamsString);
-  const [visibleCount, setVisibleCount] = useState(24);
-  if (searchParamsString !== prevParamsString) {
-    setPrevParamsString(searchParamsString);
-    setVisibleCount(24);
-  }
+  // Top of the results: where the page scrolls to when the page changes
+  const resultsRef = useRef<HTMLDivElement>(null);
 
   // Local state for debounced inputs
   const urlQ = searchParams.get("q") || "";
@@ -100,6 +101,11 @@ export function ShopClient({
   const updateParams = useCallback(
     (newParams: Record<string, string | null>) => {
       const current = new URLSearchParams(searchParams.toString());
+      // Any filter, search or sort change starts again from page 1. Only a
+      // call that sets the page itself keeps it.
+      if (!("page" in newParams)) {
+        current.delete("page");
+      }
       for (const [key, val] of Object.entries(newParams)) {
         if (val === null || val === undefined || val === "") {
           current.delete(key);
@@ -399,6 +405,35 @@ export function ShopClient({
     }
     return list;
   }, [filteredProducts, activeSort]);
+
+  // Pagination: 15 products per page, the page lives in the URL (?page=2) so a
+  // product page's Back button returns to the same page of the list.
+  const totalPages = pageCount(sortedProducts.length);
+  const currentPage = parsePage(searchParams.get("page"), totalPages);
+  const pageProducts = useMemo(
+    () => pageSlice(sortedProducts, currentPage),
+    [sortedProducts, currentPage]
+  );
+  const firstShown = (currentPage - 1) * PRODUCTS_PER_PAGE + 1;
+  const lastShown = firstShown + pageProducts.length - 1;
+
+  const handlePageChange = useCallback(
+    (page: number) => {
+      const next = Math.min(Math.max(1, page), totalPages);
+      updateParams({ page: next === 1 ? null : String(next) });
+      // Show the top of the new page's products, not the bottom of the old page
+      requestAnimationFrame(() => {
+        const reduceMotion = window.matchMedia(
+          "(prefers-reduced-motion: reduce)"
+        ).matches;
+        resultsRef.current?.scrollIntoView({
+          behavior: reduceMotion ? "auto" : "smooth",
+          block: "start",
+        });
+      });
+    },
+    [totalPages, updateParams]
+  );
 
   // Handlers for toggles
   const handleToggleCategory = useCallback(
@@ -757,13 +792,16 @@ export function ShopClient({
         </aside>
 
         {/* Main Products Grid Area */}
-        <div className="lg:col-span-3 space-y-4">
+        <div ref={resultsRef} className="lg:col-span-3 space-y-4 scroll-mt-28">
           {/* Desktop Top Header Bar: Counts, Chips, Sort */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-zinc-200">
             <div className="flex items-center gap-3">
               <span className="text-xs font-mono text-zinc-600">
-                {sortedProducts.length}{" "}
-                {sortedProducts.length === 1 ? "product" : "products"}
+                {totalPages > 1
+                  ? `${firstShown}\u2013${lastShown} of ${sortedProducts.length} products`
+                  : `${sortedProducts.length} ${
+                      sortedProducts.length === 1 ? "product" : "products"
+                    }`}
               </span>
               {hasActiveFilters && (
                 <button
@@ -850,27 +888,16 @@ export function ShopClient({
           {sortedProducts.length > 0 && (
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-                {sortedProducts.slice(0, visibleCount).map((product) => (
+                {pageProducts.map((product) => (
                   <ProductCard key={product.id} product={product} />
                 ))}
               </div>
 
-              {/* Load More Pagination */}
-              {visibleCount < sortedProducts.length && (
-                <div className="text-center pt-8 pb-4 space-y-2">
-                  <p className="text-xs font-mono text-zinc-500">
-                    Showing {Math.min(visibleCount, sortedProducts.length)} of{" "}
-                    {sortedProducts.length}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setVisibleCount((prev) => prev + 24)}
-                    className="inline-flex items-center justify-center px-6 py-2.5 text-xs font-semibold rounded-lg bg-zinc-900 text-white hover:bg-zinc-800 transition shadow-sm"
-                  >
-                    Load more
-                  </button>
-                </div>
-              )}
+              <Pagination
+                page={currentPage}
+                totalPages={totalPages}
+                onChange={handlePageChange}
+              />
             </>
           )}
         </div>
