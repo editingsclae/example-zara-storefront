@@ -461,9 +461,20 @@ export interface Banner {
   link: { type: BannerLinkType; handle?: string };
 }
 
+// A category with a picture, chosen by the merchant. `handle` is the public
+// category handle.
+export interface CategoryTile {
+  id: string;
+  category_id: string;
+  name: string;
+  handle: string;
+  image_url: string;
+}
+
 export interface StorefrontContent {
   hero_slides: Banner[];
   promo_banners: Banner[];
+  category_tiles: CategoryTile[];
 }
 
 // The banners are decoration: if they cannot be loaded the page still works
@@ -477,10 +488,11 @@ export async function getStorefrontContent(): Promise<StorefrontContent> {
     return {
       hero_slides: Array.isArray(data.hero_slides) ? data.hero_slides : [],
       promo_banners: Array.isArray(data.promo_banners) ? data.promo_banners : [],
+      category_tiles: Array.isArray(data.category_tiles) ? data.category_tiles : [],
     };
   } catch (err) {
     console.error("Error fetching storefront banners:", err);
-    return { hero_slides: [], promo_banners: [] };
+    return { hero_slides: [], promo_banners: [], category_tiles: [] };
   }
 }
 

@@ -12,6 +12,7 @@ import {
 import { ProductCard } from "@/components/ProductCard";
 import { HeroSlider } from "@/components/HeroSlider";
 import { PromoBanners } from "@/components/PromoBanners";
+import { CategoryTiles } from "@/components/CategoryTiles";
 import { ArrowRight, Sparkles, LayoutGrid, PackageX } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -96,8 +97,11 @@ export default async function HomePage() {
 
       )}
 
-      {/* Category Tiles Section */}
-      {categories.length > 0 && (
+      {/* Categories with pictures, chosen by the merchant. Without any, the simple list below is shown. */}
+      <CategoryTiles tiles={content.category_tiles} />
+
+      {/* Simple category list: the fallback when the merchant has no category tiles */}
+      {content.category_tiles.length === 0 && categories.length > 0 && (
         <section className="space-y-4">
           <div className="flex items-center justify-between pb-3 border-b border-zinc-200">
             <div className="flex items-center gap-2">
