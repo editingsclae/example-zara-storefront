@@ -472,7 +472,7 @@ export async function getStorefrontContent(): Promise<StorefrontContent> {
   try {
     const data = await medusaFetch<Partial<StorefrontContent>>(
       "/store/merchant/storefront",
-      { next: { revalidate: 60 } }
+      { cache: "no-store" }
     );
     return {
       hero_slides: Array.isArray(data.hero_slides) ? data.hero_slides : [],
