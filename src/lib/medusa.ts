@@ -808,6 +808,40 @@ export async function confirmEmailVerification(
   );
 }
 
+// -------------------------------------------------------------
+// Password reset (6 digit code sent by email)
+// -------------------------------------------------------------
+
+// Emails a code when the address belongs to an account. The answer is the same
+// whether or not it does, so the page can never tell who has an account.
+export async function requestPasswordReset(
+  email: string
+): Promise<{ sent: true; can_resend_in: number }> {
+  return medusaFetch<{ sent: true; can_resend_in: number }>(
+    "/store/merchant/password-reset",
+    {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    }
+  );
+}
+
+// Sets the new password when the code is right. `email` in the answer is the
+// address to log in with (the way it was typed when the account was made).
+export async function confirmPasswordReset(params: {
+  email: string;
+  code: string;
+  password: string;
+}): Promise<{ reset: true; email: string }> {
+  return medusaFetch<{ reset: true; email: string }>(
+    "/store/merchant/password-reset/confirm",
+    {
+      method: "POST",
+      body: JSON.stringify(params),
+    }
+  );
+}
+
 export async function getCustomerOrders(token: string): Promise<Order[]> {
   try {
     const data = await medusaFetch<{ orders: Order[] }>("/store/orders", {
