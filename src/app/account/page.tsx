@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
+import EmailVerificationCard from "@/components/EmailVerificationCard";
 import {
   getCustomerOrders,
   Order,
@@ -18,14 +19,24 @@ import {
   ChevronRight,
   ShoppingBag,
   Clock,
+  BadgeCheck,
 } from "lucide-react";
 
 export default function AccountPage() {
   const router = useRouter();
-  const { customer, token, logout, isLoading: authLoading } = useAuth();
+  const {
+    customer,
+    token,
+    logout,
+    isLoading: authLoading,
+    emailVerified,
+  } = useAuth();
   const { clearCart } = useCart();
   const [orders, setOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(true);
+  // Goes up when the email gets confirmed: the orders are loaded again, because
+  // earlier guest orders were just linked to this account
+  const [ordersVersion, setOrdersVersion] = useState(0);
 
   useEffect(() => {
     if (!authLoading && !customer && !token) {
@@ -50,7 +61,7 @@ export default function AccountPage() {
     return () => {
       isCurrent = false;
     };
-  }, [token]);
+  }, [token, ordersVersion]);
 
   if (authLoading || (!customer && token)) {
     return (
@@ -87,6 +98,12 @@ export default function AccountPage() {
             <p className="text-xs text-zinc-500 font-mono mt-0.5">
               {customer.email}
             </p>
+            {emailVerified === true && (
+              <p className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 mt-1">
+                <BadgeCheck size={13} />
+                Email confirmed
+              </p>
+            )}
           </div>
         </div>
 
@@ -98,6 +115,14 @@ export default function AccountPage() {
           <span>Sign Out</span>
         </button>
       </div>
+
+      {/* Email confirmation: shown until the code was entered */}
+      {emailVerified === false && (
+        <EmailVerificationCard
+          email={customer.email}
+          onVerified={() => setOrdersVersion((v) => v + 1)}
+        />
+      )}
 
       {/* Orders Section */}
       <div className="space-y-4">

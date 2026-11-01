@@ -1,8 +1,8 @@
 // The storefront remembers the ids of the orders a shopper placed as a guest, in
-// this browser only. After the shopper logs in or registers, the ids go to the
-// backend, which moves the orders that really belong to that email to the
-// account. The ids are the proof of ownership: the email alone proves nothing,
-// because anyone can register with somebody else's email.
+// this browser only. Since the email has to be confirmed with a code before
+// orders are moved (and the backend then moves every guest order of that email),
+// the ids are no longer needed as proof of ownership: they are only kept so the
+// browser can be cleaned up once the orders are linked to the account.
 
 const KEY = "guest_order_ids";
 const MAX_IDS = 20;

@@ -738,19 +738,72 @@ export async function getOrder(
   }
 }
 
-// Moves the guest orders named in orderIds to the logged-in customer. The backend
-// only moves orders of this merchant that were placed as a guest with the same
-// email; everything else is skipped quietly.
+// Moves guest orders to the logged-in customer. The backend refuses (403,
+// code "email_not_verified") until the customer's email is confirmed. It only
+// moves orders of this merchant that were placed as a guest with the same email;
+// everything else is skipped quietly. Without orderIds every such order is moved,
+// so it also works for orders placed on another device.
 export async function claimGuestOrders(
   token: string,
-  orderIds: string[]
+  orderIds?: string[]
 ): Promise<{ claimed: string[]; already_yours: string[] }> {
   return medusaFetch<{ claimed: string[]; already_yours: string[] }>(
     "/store/merchant/claim-orders",
     {
       method: "POST",
       token,
-      body: JSON.stringify({ order_ids: orderIds }),
+      body: JSON.stringify(orderIds ? { order_ids: orderIds } : {}),
+    }
+  );
+}
+
+// -------------------------------------------------------------
+// Email confirmation (6 digit code sent by email)
+// -------------------------------------------------------------
+export interface EmailVerificationStatus {
+  email: string;
+  verified: boolean;
+  // A code was sent and still works
+  code_pending: boolean;
+  // Seconds until a new code can be asked for
+  can_resend_in: number;
+  // Seconds the pending code still works
+  expires_in: number;
+}
+
+export async function getEmailVerification(
+  token: string
+): Promise<EmailVerificationStatus> {
+  return medusaFetch<EmailVerificationStatus>(
+    "/store/merchant/email-verification",
+    { token, cache: "no-store" }
+  );
+}
+
+// Emails a new code. Answers { sent: true, can_resend_in, expires_in }, or
+// { verified: true } when the email is already confirmed.
+export async function sendEmailVerification(token: string): Promise<{
+  sent?: boolean;
+  verified?: boolean;
+  can_resend_in?: number;
+  expires_in?: number;
+}> {
+  return medusaFetch("/store/merchant/email-verification", {
+    method: "POST",
+    token,
+  });
+}
+
+export async function confirmEmailVerification(
+  token: string,
+  code: string
+): Promise<{ verified: true }> {
+  return medusaFetch<{ verified: true }>(
+    "/store/merchant/email-verification/confirm",
+    {
+      method: "POST",
+      token,
+      body: JSON.stringify({ code }),
     }
   );
 }

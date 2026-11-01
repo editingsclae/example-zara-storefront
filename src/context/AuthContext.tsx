@@ -5,8 +5,10 @@ import {
   Customer,
   claimGuestOrders,
   getCustomer,
+  getEmailVerification,
   loginCustomer,
   registerCustomer,
+  sendEmailVerification,
 } from "@/lib/medusa";
 import { forgetGuestOrders, getGuestOrderIds } from "@/lib/guest-orders";
 
@@ -23,22 +25,41 @@ interface AuthContextType {
   }) => Promise<void>;
   logout: () => void;
   refreshCustomer: () => Promise<void>;
+  // Whether the customer's email was confirmed with a code. null: not known
+  // (not logged in yet, or the backend could not be reached).
+  emailVerified: boolean | null;
+  // Call after the code was accepted: links the guest orders of this email to
+  // the account and updates emailVerified.
+  markEmailVerified: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Moves the guest orders placed in this browser to the account that just logged
-// in. Failure is ignored: the shopper can still log in and shop.
-async function claimRememberedOrders(token: string) {
-  const ids = getGuestOrderIds();
-  if (ids.length === 0) return;
+// Moves the guest orders of the (confirmed) email to the account that is logged
+// in, including orders placed on another device. Failure is ignored: the shopper
+// can still shop, and the next login tries again.
+async function claimOrders(token: string) {
   try {
-    await claimGuestOrders(token, ids);
-    // Orders that were skipped (different email) can never be claimed from this
-    // account, so there is no reason to keep sending them.
-    forgetGuestOrders(ids);
+    await claimGuestOrders(token);
+    // They are linked now. Orders with another email can never be claimed from
+    // this account, so there is no reason to keep their ids.
+    forgetGuestOrders(getGuestOrderIds());
   } catch {
-    // Keep the ids and try again at the next login
+    // Try again at the next login
+  }
+}
+
+// Asks the backend whether the email is confirmed. A confirmed account gets its
+// guest orders linked straight away. Returns null when the backend cannot say.
+async function syncEmailStatus(token: string): Promise<boolean | null> {
+  try {
+    const status = await getEmailVerification(token);
+    if (status.verified) {
+      await claimOrders(token);
+    }
+    return status.verified;
+  } catch {
+    return null;
   }
 }
 
@@ -49,6 +70,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [emailVerified, setEmailVerified] = useState<boolean | null>(null);
 
   // Initialize token and customer asynchronously on mount
   useEffect(() => {
@@ -63,6 +85,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (isMounted) {
             if (cust) {
               setCustomer(cust);
+              // Not awaited: the page does not wait for the email check
+              syncEmailStatus(saved).then((verified) => {
+                if (isMounted) setEmailVerified(verified);
+              });
             } else {
               localStorage.removeItem(TOKEN_KEY);
               document.cookie = `${TOKEN_KEY}=; path=/; max-age=0`;
@@ -89,7 +115,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setToken(res.token);
       localStorage.setItem(TOKEN_KEY, res.token);
       document.cookie = `${TOKEN_KEY}=${res.token}; path=/; max-age=2592000; SameSite=Lax`;
-      await claimRememberedOrders(res.token);
+      setEmailVerified(await syncEmailStatus(res.token));
       const cust = await getCustomer(res.token);
       setCustomer(cust);
     } finally {
@@ -109,7 +135,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setToken(res.token);
       localStorage.setItem(TOKEN_KEY, res.token);
       document.cookie = `${TOKEN_KEY}=${res.token}; path=/; max-age=2592000; SameSite=Lax`;
-      await claimRememberedOrders(res.token);
+      // The shopper can order without confirming, but a first code is sent now.
+      // If the email cannot be sent the account page offers to send it again.
+      try {
+        await sendEmailVerification(res.token);
+      } catch {
+        // ignore
+      }
+      setEmailVerified(await syncEmailStatus(res.token));
       const cust = await getCustomer(res.token);
       setCustomer(cust || res.customer);
     } finally {
@@ -120,6 +153,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = () => {
     setToken(null);
     setCustomer(null);
+    setEmailVerified(null);
     localStorage.removeItem(TOKEN_KEY);
     document.cookie = `${TOKEN_KEY}=; path=/; max-age=0`;
     localStorage.removeItem(CART_KEY);
@@ -136,6 +170,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const markEmailVerified = async () => {
+    if (!token) return;
+    await claimOrders(token);
+    setEmailVerified(true);
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -146,6 +186,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         register,
         logout,
         refreshCustomer,
+        emailVerified,
+        markEmailVerified,
       }}
     >
       {children}
