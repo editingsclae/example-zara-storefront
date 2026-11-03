@@ -501,10 +501,27 @@ export async function getStorefrontContent(): Promise<StorefrontContent> {
 // -------------------------------------------------------------
 export type FooterNetwork = "tiktok" | "facebook" | "instagram";
 
+export type FooterPageSlug =
+  | "contact"
+  | "shipping"
+  | "returns"
+  | "privacy"
+  | "terms";
+
 export interface FooterContent {
   store_name: string | null;
   description: string | null;
   social_links: Array<{ network: FooterNetwork; url: string }>;
+  // Up to 5 categories for the Shop column, in the merchant's order
+  shop_categories: Array<{ id: string; name: string; handle: string }>;
+  // The support pages that have text, in a fixed order
+  pages: Array<{ slug: FooterPageSlug; title: string }>;
+}
+
+export interface FooterPage {
+  slug: FooterPageSlug;
+  title: string;
+  text: string;
 }
 
 export const FOOTER_NETWORK_NAMES: Record<FooterNetwork, string> = {
@@ -514,6 +531,7 @@ export const FOOTER_NETWORK_NAMES: Record<FooterNetwork, string> = {
 };
 
 const FOOTER_NETWORKS = Object.keys(FOOTER_NETWORK_NAMES);
+const FOOTER_PAGE_SLUGS = ["contact", "shipping", "returns", "privacy", "terms"];
 
 function cleanText(value: unknown): string | null {
   return typeof value === "string" && value.trim() !== "" ? value.trim() : null;
@@ -531,8 +549,16 @@ function isSafeLink(url: unknown): url is string {
   }
 }
 
+const EMPTY_FOOTER: FooterContent = {
+  store_name: null,
+  description: null,
+  social_links: [],
+  shop_categories: [],
+  pages: [],
+};
+
 // The footer text is a nicety: if it cannot be loaded the footer still shows
-// the store's own defaults, with no social links.
+// the store's own defaults, with no social links, categories or pages.
 export async function getFooterSettings(): Promise<FooterContent> {
   try {
     const data = await medusaFetch<Partial<FooterContent>>(
@@ -540,6 +566,10 @@ export async function getFooterSettings(): Promise<FooterContent> {
       { cache: "no-store" }
     );
     const links = Array.isArray(data.social_links) ? data.social_links : [];
+    const categories = Array.isArray(data.shop_categories)
+      ? data.shop_categories
+      : [];
+    const pages = Array.isArray(data.pages) ? data.pages : [];
     return {
       store_name: cleanText(data.store_name),
       description: cleanText(data.description),
@@ -549,10 +579,47 @@ export async function getFooterSettings(): Promise<FooterContent> {
           FOOTER_NETWORKS.includes(link.network) &&
           isSafeLink(link.url)
       ),
+      shop_categories: categories
+        .filter(
+          (c): c is FooterContent["shop_categories"][number] =>
+            !!c &&
+            typeof c.name === "string" &&
+            c.name.trim() !== "" &&
+            typeof c.handle === "string" &&
+            c.handle !== ""
+        )
+        .slice(0, 5),
+      pages: pages.filter(
+        (page): page is FooterContent["pages"][number] =>
+          !!page &&
+          FOOTER_PAGE_SLUGS.includes(page.slug) &&
+          typeof page.title === "string" &&
+          page.title.trim() !== ""
+      ),
     };
   } catch (err) {
     console.error("Error fetching footer settings:", err);
-    return { store_name: null, description: null, social_links: [] };
+    return { ...EMPTY_FOOTER };
+  }
+}
+
+// One support page, or null when the merchant has not written it. Any other
+// problem (the backend is down) is thrown so the shopper sees the error page
+// and not a false "not found".
+export async function getFooterPage(slug: string): Promise<FooterPage | null> {
+  if (!FOOTER_PAGE_SLUGS.includes(slug)) return null;
+  try {
+    const data = await medusaFetch<Partial<FooterPage>>(
+      `/store/merchant/pages/${encodeURIComponent(slug)}`,
+      { cache: "no-store" }
+    );
+    const text = cleanText(data.text);
+    const title = cleanText(data.title);
+    if (!text || !title) return null;
+    return { slug: slug as FooterPageSlug, title, text };
+  } catch (err) {
+    if ((err as MedusaApiError).status === 404) return null;
+    throw err;
   }
 }
 
