@@ -496,6 +496,66 @@ export async function getStorefrontContent(): Promise<StorefrontContent> {
   }
 }
 
+// -------------------------------------------------------------
+// Footer
+// -------------------------------------------------------------
+export type FooterNetwork = "tiktok" | "facebook" | "instagram";
+
+export interface FooterContent {
+  store_name: string | null;
+  description: string | null;
+  social_links: Array<{ network: FooterNetwork; url: string }>;
+}
+
+export const FOOTER_NETWORK_NAMES: Record<FooterNetwork, string> = {
+  tiktok: "TikTok",
+  facebook: "Facebook",
+  instagram: "Instagram",
+};
+
+const FOOTER_NETWORKS = Object.keys(FOOTER_NETWORK_NAMES);
+
+function cleanText(value: unknown): string | null {
+  return typeof value === "string" && value.trim() !== "" ? value.trim() : null;
+}
+
+// Only a known network with an http(s) address is ever shown, whatever the
+// backend sends.
+function isSafeLink(url: unknown): url is string {
+  if (typeof url !== "string") return false;
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "https:" || parsed.protocol === "http:";
+  } catch {
+    return false;
+  }
+}
+
+// The footer text is a nicety: if it cannot be loaded the footer still shows
+// the store's own defaults, with no social links.
+export async function getFooterSettings(): Promise<FooterContent> {
+  try {
+    const data = await medusaFetch<Partial<FooterContent>>(
+      "/store/merchant/footer",
+      { cache: "no-store" }
+    );
+    const links = Array.isArray(data.social_links) ? data.social_links : [];
+    return {
+      store_name: cleanText(data.store_name),
+      description: cleanText(data.description),
+      social_links: links.filter(
+        (link): link is FooterContent["social_links"][number] =>
+          !!link &&
+          FOOTER_NETWORKS.includes(link.network) &&
+          isSafeLink(link.url)
+      ),
+    };
+  } catch (err) {
+    console.error("Error fetching footer settings:", err);
+    return { store_name: null, description: null, social_links: [] };
+  }
+}
+
 // Where a banner goes. A banner never links outside the store.
 export function bannerHref(link: Banner["link"]): string | null {
   switch (link?.type) {
