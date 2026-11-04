@@ -2,7 +2,8 @@ import React from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronRight } from "lucide-react";
-import { STORE_NAME, getFooterPage } from "@/lib/medusa";
+import { RichBlocks } from "@/components/RichBlocks";
+import { STORE_NAME, getFooterPage, type RichBlock } from "@/lib/medusa";
 
 export const dynamic = "force-dynamic";
 
@@ -16,8 +17,25 @@ export async function generateMetadata({ params }: SupportPageProps) {
   return { title: page ? `${page.title} | ${STORE_NAME}` : STORE_NAME };
 }
 
-// The text is plain text: a blank line starts a paragraph and a single line
-// break stays a line break. It is shown as text, never as HTML.
+// The merchant's text arrives as blocks (headings, paragraphs, lists, links),
+// drawn by React, never as HTML.
+
+// Merchants often start the text with the page's own title. The page already
+// shows it as its heading, so it is not repeated.
+function withoutRepeatedTitle(blocks: RichBlock[], title: string): RichBlock[] {
+  const first = blocks[0];
+  if (first && first.type === "heading") {
+    const heading = first.content
+      .map((node) => (node.type === "text" ? node.text : node.type === "link" ? node.children.map((c) => c.text).join("") : " "))
+      .join("")
+      .replace(/[\s:]+$/, "")
+      .trim()
+      .toLowerCase();
+    if (heading === title.trim().toLowerCase()) return blocks.slice(1);
+  }
+  return blocks;
+}
+
 export default async function SupportPage({ params }: SupportPageProps) {
   const { slug } = await params;
   const page = await getFooterPage(slug);
@@ -26,7 +44,7 @@ export default async function SupportPage({ params }: SupportPageProps) {
     notFound();
   }
 
-  const paragraphs = page.text.split(/\n{2,}/);
+  const blocks = withoutRepeatedTitle(page.blocks, page.title);
 
   return (
     <article className="max-w-3xl mx-auto space-y-6">
@@ -40,13 +58,7 @@ export default async function SupportPage({ params }: SupportPageProps) {
       <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">
         {page.title}
       </h1>
-      <div data-testid="support-page-text" className="space-y-4 text-sm leading-7 text-zinc-700">
-        {paragraphs.map((paragraph, index) => (
-          <p key={index} className="whitespace-pre-line">
-            {paragraph}
-          </p>
-        ))}
-      </div>
+      <RichBlocks blocks={blocks} />
     </article>
   );
 }

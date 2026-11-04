@@ -518,10 +518,40 @@ export interface FooterContent {
   pages: Array<{ slug: FooterPageSlug; title: string }>;
 }
 
+// A support page is drawn from blocks: the merchant's text, already split into
+// headings, paragraphs, lists and rules by the backend.
+export interface RichText {
+  type: "text";
+  text: string;
+  bold?: boolean;
+  italic?: boolean;
+}
+export interface RichLink {
+  type: "link";
+  href: string;
+  children: RichText[];
+}
+export type RichInline = RichText | RichLink | { type: "break" };
+export interface RichListItem {
+  content: RichInline[];
+  children: RichListBlock[];
+}
+export interface RichListBlock {
+  type: "list";
+  ordered: boolean;
+  items: RichListItem[];
+}
+export type RichBlock =
+  | { type: "heading"; level: 1 | 2 | 3; content: RichInline[] }
+  | { type: "paragraph"; content: RichInline[] }
+  | RichListBlock
+  | { type: "rule" };
+
 export interface FooterPage {
   slug: FooterPageSlug;
   title: string;
   text: string;
+  blocks: RichBlock[];
 }
 
 export const FOOTER_NETWORK_NAMES: Record<FooterNetwork, string> = {
@@ -603,6 +633,130 @@ export async function getFooterSettings(): Promise<FooterContent> {
   }
 }
 
+// A link a page may contain: https, http, mailto: or tel:, whatever the
+// backend sends.
+function isSafeHref(href: unknown): href is string {
+  if (typeof href !== "string") return false;
+  const value = href.trim();
+  if (value === "" || /\s/.test(value)) return false;
+  if (/^https?:\/\//i.test(value)) {
+    try {
+      const url = new URL(value);
+      return url.username === "" && url.password === "" && url.hostname !== "";
+    } catch {
+      return false;
+    }
+  }
+  return (
+    /^mailto:[^\s@]+@[^\s@]+$/i.test(value) ||
+    /^tel:\+?[0-9][0-9().-]*$/i.test(value)
+  );
+}
+
+function cleanTextNode(node: unknown): RichText | null {
+  if (!node || typeof node !== "object") return null;
+  const n = node as Record<string, unknown>;
+  if (n.type !== "text" || typeof n.text !== "string" || n.text === "") {
+    return null;
+  }
+  const out: RichText = { type: "text", text: n.text };
+  if (n.bold === true) out.bold = true;
+  if (n.italic === true) out.italic = true;
+  return out;
+}
+
+function cleanInline(nodes: unknown): RichInline[] {
+  if (!Array.isArray(nodes)) return [];
+  const out: RichInline[] = [];
+  for (const node of nodes) {
+    if (!node || typeof node !== "object") continue;
+    const n = node as Record<string, unknown>;
+    if (n.type === "break") {
+      out.push({ type: "break" });
+    } else if (n.type === "link") {
+      const children = (Array.isArray(n.children) ? n.children : [])
+        .map(cleanTextNode)
+        .filter((c): c is RichText => c !== null);
+      if (isSafeHref(n.href) && children.length > 0) {
+        out.push({ type: "link", href: n.href.trim(), children });
+      } else {
+        out.push(...children);
+      }
+    } else {
+      const text = cleanTextNode(node);
+      if (text) out.push(text);
+    }
+  }
+  return out;
+}
+
+const MAX_LIST_DEPTH = 4;
+
+function cleanList(raw: Record<string, unknown>, depth: number): RichListBlock | null {
+  if (depth > MAX_LIST_DEPTH || !Array.isArray(raw.items)) return null;
+  const items: RichListItem[] = [];
+  for (const item of raw.items) {
+    if (!item || typeof item !== "object") continue;
+    const i = item as Record<string, unknown>;
+    const children = (Array.isArray(i.children) ? i.children : [])
+      .map((child) =>
+        child && typeof child === "object" && (child as Record<string, unknown>).type === "list"
+          ? cleanList(child as Record<string, unknown>, depth + 1)
+          : null
+      )
+      .filter((c): c is RichListBlock => c !== null);
+    const content = cleanInline(i.content);
+    if (content.length > 0 || children.length > 0) {
+      items.push({ content, children });
+    }
+  }
+  return items.length > 0
+    ? { type: "list", ordered: raw.ordered === true, items }
+    : null;
+}
+
+// The blocks of a page as the backend sent them. Anything that is not a known
+// block is dropped, so an unexpected answer can never put markup on the page.
+export function cleanBlocks(raw: unknown): RichBlock[] {
+  if (!Array.isArray(raw)) return [];
+  const out: RichBlock[] = [];
+  for (const block of raw) {
+    if (!block || typeof block !== "object") continue;
+    const b = block as Record<string, unknown>;
+    if (b.type === "heading") {
+      const content = cleanInline(b.content);
+      const level = b.level === 1 || b.level === 2 || b.level === 3 ? b.level : 3;
+      if (content.length > 0) out.push({ type: "heading", level, content });
+    } else if (b.type === "paragraph") {
+      const content = cleanInline(b.content);
+      if (content.length > 0) out.push({ type: "paragraph", content });
+    } else if (b.type === "list") {
+      const list = cleanList(b, 1);
+      if (list) out.push(list);
+    } else if (b.type === "rule") {
+      out.push({ type: "rule" });
+    }
+  }
+  return out;
+}
+
+// Plain text as blocks: a blank line starts a paragraph and a single line break
+// stays a line break. Used when the backend sent no usable blocks.
+export function textToBlocks(text: string): RichBlock[] {
+  return text
+    .split(/\n{2,}/)
+    .map((paragraph) => paragraph.trim())
+    .filter((paragraph) => paragraph !== "")
+    .map((paragraph) => {
+      const content: RichInline[] = [];
+      paragraph.split("\n").forEach((line, index) => {
+        if (index > 0) content.push({ type: "break" });
+        if (line.trim() !== "") content.push({ type: "text", text: line.trim() });
+      });
+      return { type: "paragraph" as const, content };
+    });
+}
+
 // One support page, or null when the merchant has not written it. Any other
 // problem (the backend is down) is thrown so the shopper sees the error page
 // and not a false "not found".
@@ -616,7 +770,13 @@ export async function getFooterPage(slug: string): Promise<FooterPage | null> {
     const text = cleanText(data.text);
     const title = cleanText(data.title);
     if (!text || !title) return null;
-    return { slug: slug as FooterPageSlug, title, text };
+    const blocks = cleanBlocks(data.blocks);
+    return {
+      slug: slug as FooterPageSlug,
+      title,
+      text,
+      blocks: blocks.length > 0 ? blocks : textToBlocks(text),
+    };
   } catch (err) {
     if ((err as MedusaApiError).status === 404) return null;
     throw err;
