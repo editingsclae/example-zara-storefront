@@ -76,10 +76,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let isMounted = true;
     const init = async () => {
+      // Earlier versions also copied the token into a cookie. Nothing reads it, and
+      // a cookie travels with every request to the storefront, so it is removed
+      // from browsers that still have it.
+      document.cookie = `${TOKEN_KEY}=; path=/; max-age=0`;
       const saved = localStorage.getItem(TOKEN_KEY);
       if (saved) {
         setToken(saved);
-        document.cookie = `${TOKEN_KEY}=${saved}; path=/; max-age=2592000; SameSite=Lax`;
         try {
           const cust = await getCustomer(saved);
           if (isMounted) {
@@ -114,7 +117,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const res = await loginCustomer(email, pass);
       setToken(res.token);
       localStorage.setItem(TOKEN_KEY, res.token);
-      document.cookie = `${TOKEN_KEY}=${res.token}; path=/; max-age=2592000; SameSite=Lax`;
       setEmailVerified(await syncEmailStatus(res.token));
       const cust = await getCustomer(res.token);
       setCustomer(cust);
@@ -134,7 +136,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const res = await registerCustomer(data);
       setToken(res.token);
       localStorage.setItem(TOKEN_KEY, res.token);
-      document.cookie = `${TOKEN_KEY}=${res.token}; path=/; max-age=2592000; SameSite=Lax`;
       // The shopper can order without confirming, but a first code is sent now.
       // If the email cannot be sent the account page offers to send it again.
       try {
