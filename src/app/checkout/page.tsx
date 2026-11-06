@@ -1,5 +1,6 @@
 "use client";
 
+import { showVariantTitle } from "@/lib/variant-select";
 import React, { useState, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/context/CartContext";
@@ -719,6 +720,9 @@ export default function CheckoutPage() {
               <div key={item.id} className="py-2.5 flex justify-between gap-2">
                 <div>
                   <p className="font-semibold text-zinc-900">{item.title}</p>
+                  {showVariantTitle(item.variant_title) && (
+                    <p className="text-xs text-zinc-500">{item.variant_title}</p>
+                  )}
                   <p className="text-zinc-500 font-mono">Qty: {item.quantity}</p>
                 </div>
                 <div className="font-mono font-semibold text-zinc-900">

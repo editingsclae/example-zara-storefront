@@ -1,5 +1,6 @@
 "use client";
 
+import { showVariantTitle } from "@/lib/variant-select";
 import React, { useEffect, useState, use } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -153,6 +154,9 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                 >
                   <div>
                     <p className="font-semibold text-zinc-900">{item.title}</p>
+                    {showVariantTitle(item.variant_title) && (
+                      <p className="text-xs text-zinc-500">{item.variant_title}</p>
+                    )}
                     <p className="text-xs text-zinc-500">
                       Qty: {item.quantity} &bull; Unit: {formatPrice(item.unit_price, currency)}
                     </p>

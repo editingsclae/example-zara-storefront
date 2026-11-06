@@ -1,4 +1,5 @@
 import React from "react";
+import { showVariantTitle } from "@/lib/variant-select";
 import Link from "next/link";
 import {
   getOrder,
@@ -95,6 +96,9 @@ export default async function OrderConfirmedPage({
                 >
                   <div>
                     <p className="font-semibold text-zinc-900">{item.title}</p>
+                    {showVariantTitle(item.variant_title) && (
+                      <p className="text-xs text-zinc-500">{item.variant_title}</p>
+                    )}
                     <p className="text-xs text-zinc-500">
                       Qty: {item.quantity} &bull; Unit: {formatPrice(item.unit_price, currencyCode)}
                     </p>
