@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Product, formatPrice } from "@/lib/medusa";
+import { priceRange } from "@/lib/variant-select";
 import { useCart } from "@/context/CartContext";
 import { Package, ShoppingBag, ArrowRight, Loader2 } from "lucide-react";
 
@@ -18,6 +19,9 @@ export function ProductCard({ product }: ProductCardProps) {
   const variants = product.variants || [];
   const primaryVariant = variants[0];
   const price = primaryVariant?.calculated_price;
+  // Variants that do not all cost the same: "From" the lowest price
+  const range = priceRange(variants);
+  const hasRange = !!range && range.low !== range.high;
 
   // Calculate stock across variants
   let hasUnmanagedStock = false;
@@ -126,7 +130,12 @@ export function ProductCard({ product }: ProductCardProps) {
 
           {/* Price */}
           <div className="pt-1 text-sm font-semibold text-zinc-900">
-            {price ? (
+            {hasRange && range ? (
+              <>
+                <span className="mr-1 text-xs font-medium text-zinc-500">From</span>
+                {formatPrice(range.low, range.currency)}
+              </>
+            ) : price ? (
               formatPrice(price.calculated_amount, price.currency_code)
             ) : (
               <span className="text-zinc-400 text-xs">Price on request</span>

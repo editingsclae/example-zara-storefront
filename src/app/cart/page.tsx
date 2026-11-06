@@ -1,5 +1,6 @@
 "use client";
 
+import { showVariantTitle } from "@/lib/variant-select";
 import React from "react";
 import Link from "next/link";
 import Image from "next/image";
@@ -84,7 +85,7 @@ export default function CartPage() {
                     <h3 className="font-semibold text-sm text-zinc-900">
                       {item.title}
                     </h3>
-                    {item.variant_title && item.variant_title !== "Default Variant" && (
+                    {showVariantTitle(item.variant_title) && (
                       <p className="text-xs text-zinc-500">{item.variant_title}</p>
                     )}
                     <p className="text-xs font-mono text-zinc-600 mt-0.5">

@@ -433,7 +433,7 @@ export async function getProductByHandle(
   searchParams.set("region_id", region.id);
   searchParams.set(
     "fields",
-    "*variants.calculated_price,+variants.inventory_quantity,*categories,+metadata"
+    "*variants.calculated_price,+variants.inventory_quantity,*categories,+metadata,*options,*options.values,*variants.options"
   );
 
   const data = await medusaFetch<{ products: Product[] }>(

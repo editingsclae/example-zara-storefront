@@ -1,5 +1,6 @@
 "use client";
 
+import { showVariantTitle } from "@/lib/variant-select";
 import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
@@ -196,7 +197,7 @@ export function CartDrawer() {
                             <h4 className="text-xs font-semibold text-zinc-900 truncate">
                               {item.title}
                             </h4>
-                            {item.variant_title && item.variant_title !== "Default Variant" && (
+                            {showVariantTitle(item.variant_title) && (
                               <p className="text-[11px] text-zinc-500 truncate">
                                 {item.variant_title}
                               </p>

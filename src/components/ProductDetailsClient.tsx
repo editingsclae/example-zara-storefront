@@ -4,6 +4,14 @@ import React, { useState } from "react";
 import { Product, ProductVariant, formatPrice } from "@/lib/medusa";
 import { useCart } from "@/context/CartContext";
 import { ShoppingBag, AlertCircle } from "lucide-react";
+import {
+  choose,
+  findVariant,
+  initialSelection,
+  optionGroups,
+  valueState,
+  type Selection,
+} from "@/lib/variant-select";
 
 interface ProductDetailsClientProps {
   product: Product;
@@ -13,6 +21,12 @@ export function ProductDetailsClient({ product }: ProductDetailsClientProps) {
   const { addToCart, isLoading: cartLoading } = useCart();
   const variants = product.variants || [];
 
+  // One row of buttons per option (Size, Color...). Products whose variants have
+  // no options to choose from keep the plain list of variants below.
+  const groups = optionGroups(product);
+  const [selection, setSelection] = useState<Selection>(() =>
+    initialSelection(product, optionGroups(product))
+  );
   const [selectedVariantId, setSelectedVariantId] = useState<string>(
     variants[0]?.id || ""
   );
@@ -21,7 +35,9 @@ export function ProductDetailsClient({ product }: ProductDetailsClientProps) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const selectedVariant =
-    variants.find((v) => v.id === selectedVariantId) || variants[0];
+    groups.length > 0
+      ? findVariant(product, groups, selection) || variants[0]
+      : variants.find((v) => v.id === selectedVariantId) || variants[0];
 
   const price = selectedVariant?.calculated_price;
   const inventory = selectedVariant?.inventory_quantity;
@@ -77,8 +93,51 @@ export function ProductDetailsClient({ product }: ProductDetailsClientProps) {
         )}
       </div>
 
-      {/* Variant Picker (if more than 1 variant) */}
-      {variants.length > 1 && (
+      {/* One row of buttons per option. A greyed out button is a choice that is
+          sold out or does not exist with the other choices made. */}
+      {groups.map((group) => (
+        <div key={group.id} className="space-y-2" data-testid={`option-${group.title}`}>
+          <p className="text-xs font-bold uppercase tracking-wider text-zinc-700">
+            {group.title}
+            <span className="ml-2 font-medium normal-case tracking-normal text-zinc-500">
+              {selection[group.id]}
+            </span>
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {group.values.map((value) => {
+              const state = valueState(product, groups, selection, group.id, value);
+              const isSelected = selection[group.id] === value;
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  aria-pressed={isSelected}
+                  disabled={state === "gone"}
+                  title={state === "available" ? undefined : "Not available with your other choices"}
+                  onClick={() => {
+                    setSelection(choose(product, groups, selection, group.id, value));
+                    setQuantity(1);
+                  }}
+                  className={`min-w-11 px-4 py-2 border rounded-md text-sm transition ${
+                    isSelected
+                      ? "border-black bg-zinc-900 text-white font-semibold"
+                      : state === "gone"
+                      ? "border-zinc-200 bg-zinc-100 text-zinc-300 line-through cursor-not-allowed"
+                      : state === "unavailable"
+                      ? "border-zinc-200 bg-white text-zinc-400 line-through hover:border-zinc-400"
+                      : "border-zinc-300 bg-white text-zinc-800 hover:border-black"
+                  }`}
+                >
+                  {value}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+
+      {/* Plain list of variants, for variants that have no options to choose from */}
+      {groups.length === 0 && variants.length > 1 && (
         <div className="space-y-2">
           <label className="text-xs font-bold uppercase tracking-wider text-zinc-700">
             Select Variant
@@ -93,7 +152,10 @@ export function ProductDetailsClient({ product }: ProductDetailsClientProps) {
                 <button
                   key={v.id}
                   type="button"
-                  onClick={() => setSelectedVariantId(v.id)}
+                  onClick={() => {
+                    setSelectedVariantId(v.id);
+                    setQuantity(1);
+                  }}
                   disabled={vOutOfStock}
                   className={`p-3 text-left border rounded-lg transition text-xs flex flex-col justify-between ${
                     isSelected
