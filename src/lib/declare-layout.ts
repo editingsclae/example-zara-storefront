@@ -7,7 +7,7 @@
 // is the most banners the page draws (see PromoBanners). Only change it together
 // with the page: add or remove the places in PromoBanners first, then change the
 // number. Changing the number alone must never add a place to the page.
-export const LAYOUT = { promo_banners: 2 };
+export const LAYOUT = { promo_banners: 3 };
 
 // The banners the page has room for: never more than the places it declared
 export function visiblePromoBanners<T>(banners: T[], places: number = LAYOUT.promo_banners): T[] {
