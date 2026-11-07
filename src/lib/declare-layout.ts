@@ -3,8 +3,16 @@
 // (see src/instrumentation.ts). Saying the same thing again changes nothing.
 
 // The number of promo banner places on this storefront's home page.
-// Change it here when the home page gets more or fewer places for them.
+// This is the one number for both things: it is what the portal is told, and it
+// is the most banners the page draws (see PromoBanners). Only change it together
+// with the page: add or remove the places in PromoBanners first, then change the
+// number. Changing the number alone must never add a place to the page.
 export const LAYOUT = { promo_banners: 2 };
+
+// The banners the page has room for: never more than the places it declared
+export function visiblePromoBanners<T>(banners: T[], places: number = LAYOUT.promo_banners): T[] {
+  return banners.slice(0, Math.max(0, places));
+}
 
 type Env = Record<string, string | undefined>;
 

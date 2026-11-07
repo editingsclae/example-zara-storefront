@@ -1,14 +1,18 @@
 import React from "react";
 import { Banner } from "@/lib/medusa";
 import { BannerContent } from "@/components/BannerContent";
+import { visiblePromoBanners } from "@/lib/declare-layout";
 
 interface PromoBannersProps {
   banners: Banner[];
 }
 
-// Up to 2 promo banners set by the merchant, side by side. Nothing shows when
-// the merchant has not added any.
-export function PromoBanners({ banners }: PromoBannersProps) {
+// The promo banners set by the merchant, side by side, never more than the places
+// this page has (LAYOUT.promo_banners in src/lib/declare-layout.ts, the same number
+// the portal is told). This design is made for 2. Nothing shows when the merchant
+// has not added any.
+export function PromoBanners({ banners: all }: PromoBannersProps) {
+  const banners = visiblePromoBanners(all);
   if (banners.length === 0) return null;
 
   const pair = banners.length > 1;
