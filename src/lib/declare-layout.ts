@@ -4,7 +4,7 @@
 
 // The number of promo banner places on this storefront's home page.
 // Change it here when the home page gets more or fewer places for them.
-export const LAYOUT = { promo_banners: 2 };
+export const LAYOUT = { promo_banners: 3 };
 
 type Env = Record<string, string | undefined>;
 
