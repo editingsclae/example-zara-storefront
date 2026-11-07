@@ -5,11 +5,13 @@ import {
   getProducts,
   getCategories,
   getStorefrontContent,
+  getHomeSections,
   cleanCategoryHandle,
   Product,
   MerchantCategory,
 } from "@/lib/medusa";
 import { ProductCard } from "@/components/ProductCard";
+import { ProductSection } from "@/components/ProductSection";
 import { HeroSlider } from "@/components/HeroSlider";
 import { PromoBanners } from "@/components/PromoBanners";
 import { CategoryTiles } from "@/components/CategoryTiles";
@@ -20,6 +22,9 @@ export const dynamic = "force-dynamic";
 export default async function HomePage() {
   // Banners set by the merchant in the portal. This never throws.
   const contentPromise = getStorefrontContent();
+  // The product sections (New Arrivals, Best Sellers, Trending Now, Featured). This never
+  // throws; null means the plain New Arrivals below is shown instead.
+  const sectionsPromise = getHomeSections();
 
   let newArrivals: Product[] = [];
   let categories: MerchantCategory[] = [];
@@ -39,6 +44,7 @@ export default async function HomePage() {
   }
 
   const content = await contentPromise;
+  const homeSections = await sectionsPromise;
   const hasHeroSlides = content.hero_slides.length > 0;
 
   return (
@@ -139,7 +145,23 @@ export default async function HomePage() {
         </section>
       )}
 
-      {/* New Arrivals Section */}
+      {/* Product sections chosen by the backend; without them the plain New Arrivals */}
+      {homeSections !== null &&
+        homeSections.map((section) => (
+          <ProductSection
+            key={section.key}
+            title={section.title}
+            subtitle={
+              section.key === "new_arrivals"
+                ? `Fresh additions to ${STORE_NAME}'s catalog`
+                : undefined
+            }
+            products={section.products}
+          />
+        ))}
+
+      {/* New Arrivals Section (until the backend knows this storefront's sections) */}
+      {homeSections === null && (
       <section className="space-y-6">
         <div className="flex items-center justify-between pb-3 border-b border-zinc-200">
           <div>
@@ -188,18 +210,19 @@ export default async function HomePage() {
             ))}
           </div>
         )}
-
-        {/* Shop All Products CTA Button */}
-        <div className="pt-6 text-center">
-          <Link
-            href="/shop"
-            className="inline-flex items-center justify-center gap-2 px-8 py-3 rounded-lg bg-zinc-900 text-white text-xs sm:text-sm font-semibold hover:bg-zinc-800 transition shadow-sm"
-          >
-            <span>Shop all products</span>
-            <ArrowRight size={15} />
-          </Link>
-        </div>
       </section>
+      )}
+
+      {/* Shop All Products CTA Button */}
+      <div className="text-center">
+        <Link
+          href="/shop"
+          className="inline-flex items-center justify-center gap-2 px-8 py-3 rounded-lg bg-zinc-900 text-white text-xs sm:text-sm font-semibold hover:bg-zinc-800 transition shadow-sm"
+        >
+          <span>Shop all products</span>
+          <ArrowRight size={15} />
+        </Link>
+      </div>
 
       {/* Promo banners set by the merchant */}
       <PromoBanners banners={content.promo_banners} />

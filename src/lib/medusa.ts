@@ -1,6 +1,8 @@
 // Single centralized Medusa v2 API client for the storefront
 // Swapping the merchant or backend URL touches ONLY environment variables.
 
+import { visibleSections, type SectionKey } from "@/lib/declare-layout";
+
 export const BACKEND_URL =
   process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL || "https://api.getcardy.shop";
 export const PUBLISHABLE_KEY =
@@ -493,6 +495,70 @@ export async function getStorefrontContent(): Promise<StorefrontContent> {
   } catch (err) {
     console.error("Error fetching storefront banners:", err);
     return { hero_slides: [], promo_banners: [], category_tiles: [] };
+  }
+}
+
+// -------------------------------------------------------------
+// Product sections of the home page
+// -------------------------------------------------------------
+export interface HomeSection {
+  key: SectionKey;
+  title: string;
+  products: Product[];
+}
+
+// The sections of the home page (New Arrivals, Best Sellers, Trending Now, Featured
+// Products) with their products, in the order of this page. The backend decides
+// which products go in each; this loads them once, with prices and stock like
+// everywhere else. Returns null when the sections cannot be used (the backend
+// does not know this storefront's sections yet, or the request failed): the page then
+// shows the plain New Arrivals. Never throws.
+export async function getHomeSections(): Promise<HomeSection[] | null> {
+  try {
+    const data = await medusaFetch<{
+      declared?: boolean;
+      sections?: Array<{ key: string; title: string; product_ids: string[] }>;
+    }>("/store/merchant/storefront/sections", { cache: "no-store" });
+    if (!data.declared || !Array.isArray(data.sections)) return null;
+
+    const sections = visibleSections(
+      data.sections.filter(
+        (s) => typeof s.title === "string" && Array.isArray(s.product_ids)
+      ) as Array<{ key: SectionKey; title: string; product_ids: string[] }>
+    );
+    const ids: string[] = Array.from(
+      new Set(sections.flatMap((s) => s.product_ids))
+    );
+    if (ids.length === 0) return [];
+
+    const region = await getDefaultRegion();
+    const searchParams = new URLSearchParams();
+    searchParams.set("region_id", region.id);
+    searchParams.set(
+      "fields",
+      "*variants.calculated_price,+variants.inventory_quantity,*categories,+metadata,*options,*options.values,*variants.options"
+    );
+    searchParams.set("limit", String(ids.length));
+    ids.forEach((id) => searchParams.append("id[]", id));
+    const found = await medusaFetch<{ products: Product[] }>(
+      `/store/products?${searchParams.toString()}`,
+      { cache: "no-store" }
+    );
+    const byId = new Map((found.products || []).map((p) => [p.id, p]));
+
+    // A product that cannot be loaded any more is left out; a section with none is not shown
+    return sections
+      .map((s) => ({
+        key: s.key,
+        title: s.title,
+        products: s.product_ids
+          .map((id) => byId.get(id))
+          .filter((p): p is Product => p !== undefined),
+      }))
+      .filter((s) => s.products.length > 0);
+  } catch (err) {
+    console.error("Error fetching home page sections:", err);
+    return null;
   }
 }
 

@@ -7,7 +7,37 @@
 // is the most banners the page draws (see PromoBanners). Only change it together
 // with the page: add or remove the places in PromoBanners first, then change the
 // number. Changing the number alone must never add a place to the page.
-export const LAYOUT = { promo_banners: 2 };
+export type SectionKey = "new_arrivals" | "best_sellers" | "trending" | "featured";
+export type SectionPlace = { key: SectionKey; count: number };
+
+// The product sections of the home page, in the order the page draws them, with
+// the most products each one shows. Same rule as the promo banners: this list is
+// what the portal is told AND what the page draws (see HomePage and
+// visibleSections). To add or remove a section, change the page and this list together.
+export const SECTIONS: SectionPlace[] = [
+  { key: "new_arrivals", count: 8 },
+  { key: "best_sellers", count: 4 },
+  { key: "trending", count: 4 },
+  { key: "featured", count: 4 },
+];
+
+export const LAYOUT = { promo_banners: 2, sections: SECTIONS };
+
+// The sections the backend sent, cut to what this page has: only the sections it
+// declared, in its own order, each with at most its declared number of products.
+export function visibleSections<T extends { key: string; product_ids: string[] }>(
+  sections: T[],
+  places: SectionPlace[] = SECTIONS
+): T[] {
+  const result: T[] = [];
+  for (const place of places) {
+    const found = sections.find((s) => s.key === place.key);
+    if (!found) continue;
+    const product_ids = found.product_ids.slice(0, Math.max(0, place.count));
+    if (product_ids.length > 0) result.push({ ...found, product_ids });
+  }
+  return result;
+}
 
 // The banners the page has room for: never more than the places it declared
 export function visiblePromoBanners<T>(banners: T[], places: number = LAYOUT.promo_banners): T[] {
@@ -48,7 +78,9 @@ export async function declareLayout(
       console.error(`[layout] The backend refused the layout (${response.status}). Check STOREFRONT_LAYOUT_KEY.`);
       return "failed";
     }
-    console.info(`[layout] Declared ${LAYOUT.promo_banners} promo banner places.`);
+    console.info(
+      `[layout] Declared ${LAYOUT.promo_banners} promo banner places and ${LAYOUT.sections.length} product sections.`
+    );
     return "declared";
   } catch (error) {
     // Never stop the storefront from starting because of this
