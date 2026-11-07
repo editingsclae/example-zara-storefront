@@ -65,6 +65,8 @@ export interface Product {
     title: string;
     values: Array<{ id: string; value: string }>;
   }>;
+  // Set by the merchant: metadata.badge is the text of the badge on the product card
+  metadata?: Record<string, unknown> | null;
   created_at?: string;
 }
 

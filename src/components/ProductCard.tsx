@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Product, formatPrice } from "@/lib/medusa";
 import { priceRange } from "@/lib/variant-select";
+import { productBadge } from "@/lib/product-badge";
 import { useCart } from "@/context/CartContext";
 import { Package, ShoppingBag, ArrowRight, Loader2 } from "lucide-react";
 
@@ -79,6 +80,8 @@ export function ProductCard({ product }: ProductCardProps) {
   };
 
   const imageUrl = product.thumbnail || product.images?.[0]?.url;
+  // The badge the merchant chose for this product (empty: none)
+  const badge = productBadge(product);
 
   return (
     <div className="group border border-zinc-200 rounded-lg overflow-hidden bg-white hover:border-zinc-300 hover:shadow-sm transition flex flex-col justify-between">
@@ -101,6 +104,15 @@ export function ProductCard({ product }: ProductCardProps) {
               <Package size={36} strokeWidth={1.5} />
               <span className="text-xs uppercase tracking-wider font-medium">
                 {product.title}
+              </span>
+            </div>
+          )}
+
+          {/* The merchant's badge: "New", "Bestseller", "Sale"... */}
+          {badge && (
+            <div className="absolute top-2 left-2">
+              <span className="inline-block bg-zinc-900 text-white text-[10px] font-semibold px-2.5 py-1 rounded-full shadow-sm">
+                {badge}
               </span>
             </div>
           )}
